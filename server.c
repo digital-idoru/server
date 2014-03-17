@@ -1,6 +1,7 @@
 /************************************
 Daniel Hono II
 CSI416 Project 2
+A Simple Server
 *************************************/
 
 #include <sys/types.h>
@@ -189,7 +190,7 @@ void server(struct addrinfo *servinfo) {
   int recSize;				//size of the recieved msg.
   bool ack;				//acknowledge flag of HELO command
 
-  /*Set up the msg buffer */
+  /*Set up the recieved buffer */
   char buffer[BUFSIZE]; 
   char* sBuffer;
   memset(buffer, 0, strlen(buffer)); 
