@@ -67,7 +67,7 @@ int main(void) {
   sprintf(nodeName,"%d", PORT);
   setAddressInfoStandard(nodeName, hints, &servinfo);
 
-  //Handle the server 
+  /* Main loop to handle the server */ 
   server(servinfo);
 
   /* Free the address info linked list at the end of the program */
