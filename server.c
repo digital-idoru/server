@@ -46,21 +46,21 @@ bool checkFullMsg(char*, int); //Function to check if entire msg has arrived.
 void server(struct addrinfo*);  //Handles the main loop of the server
 void myBind(struct addrinfo*, int); //Binds a socket to the port 
 void myListen(int); //Listens on a port with a bound socket 
-void commands(char*, int, bool*);
-
+void commands(char*, int*, bool*);
+char* getDirectoryPath(char*);
 
 /*Response messages to client commands. */
-const char* welcome_msg = "\n\n~WELCOME TO THE DESERT OF THE REAL~\n\n";
-const char* helo = "220 Connection Established.\n\n";
-const char* goodbye = "100 Don't go away mad, just go away.\n";
-const char* unrec = "401 Unrecognized Input.\n"; 
-const char* nHelo = "550 You must give the HELO command.\n";
-const char* rHELO = "450 HELO already issued\n"; 
-const char* dirCh = "201 Directory changed\n";
-const char* dirChF = "401 Directory change failed.\n";
-const char* pwdS = "202: ";
-const char* nD = " 402 No current directory.\n";
-const char* getNF = "403 No such file.\n";
+char* welcome_msg = "\n\n~La Vie Est Drole~\n\n";
+char* helo = "220 Connection Established.\n\n";
+char* goodbye = "100 Don't go away mad, just go away.\n";
+char* unrec = "401 Unrecognized Input.\n"; 
+char* nHelo = "550 You must give the HELO command.\n";
+char* rHELO = "450 HELO already issued\n"; 
+char* dirCh = "201 Directory changed\n";
+char* dirChF = "401 Directory change failed.\n";
+char* pwdS = "202: ";
+char* nD = " 402 No current directory.\n";
+char* getNF = "403 No such file.\n";
 
 
 
@@ -263,7 +263,7 @@ void server(struct addrinfo *servinfo) {
 		if(ack == true) {
 			
 			/* Process commands only after the hello */
-			commands(sBuffer, clientFd, &ack);
+			commands(sBuffer, &clientFd, &ack);
 
 		} else if(checkHelo(sBuffer) == true) {
 			len = strlen(helo);		
@@ -280,33 +280,51 @@ void server(struct addrinfo *servinfo) {
 	return;
 }
 
-void commands(char* sBuffer, int clientFd, bool *ack) {
+void commands(char* sBuffer, int* clientFd, bool *ack) {
 
 	if(strcasecmp(sBuffer, "quit") == 0) { 
 
 		/*Close the connection */
-		msgSend(clientFd, goodbye, 0); 
+		msgSend(*clientFd, goodbye, 0); 
 
-		close(clientFd); //Close the client socket
-		clientFd = 0; //Reset the client file descriptor to wait for the next connection. 
-		*ack  = false; //Reset HELO flag. 
+		close(*clientFd); 
+		*clientFd = 0; 
+		*ack  = false; 
 
-	} else if(strncasecmp(sBuffer, "hello", 6) == 0) {
-		msgSend(clientFd, rHELO, 0);
+		return;
+
+	} else if(strncasecmp(sBuffer, "helo", 4) == 0) {
+		msgSend(*clientFd, rHELO, 0);
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
 		/*cd commands */
-	} else if(strcasecmp(sBuffer, "pwd") == 0) {
+		printf("the directory is: %s\n", getDirectoryPath(sBuffer));
+	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
 		/*Code for pwd command */       	
-	} else if(strcasecmp(sBuffer, "ls") == 0) {
+	} else if(strncasecmp(sBuffer, "ls", 2) == 0) {
 		/*Code for ls command */
-	} else if(strcasecmp(sBuffer, "get") == 0) {
+	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
 		/*code for get command */
-	} else if(strcasecmp(sBuffer, "put") == 0) {
+	} else if(strncasecmp(sBuffer, "put", 3) == 0) {
 		/*code for put command */
 	} else {
 		/*Unrecognized input */
-		msgSend(clientFd, unrec, 0);
+		msgSend(*clientFd, unrec, 0);
 	}
 
 	return ;
 }
+
+char* getDirectoryPath(char* buffer) {
+
+	char* dir;
+
+	strtok(buffer, " ");
+	dir = strtok(NULL, " ");
+
+	return dir;
+}
+
+
+
+
+       
