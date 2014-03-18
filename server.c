@@ -29,6 +29,8 @@ A Simple Server
 #define PORT 40000
 #define PORT_STRING_LEN 6
 
+#define ENDLINE "\n\0"
+
 #endif
 
 /*Define a boolean type */
@@ -355,11 +357,11 @@ void lsCommand(int clientFd) {
 
   while( (dir = readdir(directory)) != NULL) {
     strcpy(fn, dir->d_name);
-    strcpy(fn, "\n\0");
+    strncat(fn, ENDLINE,sizeof(ENDLINE));
     msgSend(clientFd, fn, 0);
   }
 
-  msgSend(clientFd, ".", 0);
+  msgSend(clientFd, ".\n", 0);
   return;
 
 }
