@@ -53,6 +53,7 @@ void myListen(int); //Listens on a port with a bound socket
 void commands(char*, int*, bool*); //handles the commands from the client
 char* getDirectoryPath(char*); //Extracts directory path from correctly formatted command
 void lsCommand(int); //lists all files in the current directory. 
+void resetWorkingDirectory(char*); //Reset the directory after client exits. 
 
 /*Response messages to client commands. */
 char* welcome_msg = "\n\n~La Vie Est Drole~\n\n";
@@ -204,18 +205,27 @@ void server(struct addrinfo *servinfo) {
 	int rBuff;				//size of the recieve buffer
 	int recSize;				//size of the recieved msg.
 	bool ack;				//acknowledge flag of HELO command
-	bool dirActive; //No active directory until the user uses the cd command to change to one. 
+
 
 	/*Set up the recieved buffer */
 	char buffer[BUFSIZE]; 
 	char* sBuffer;
+
+	char origin[PATH_SIZE];
+
 	memset(buffer, 0, strlen(buffer)); 
+	memset(origin, 0, PATH_SIZE);
 
 	rBuff = BUFSIZE;
 
 	/*Hello and active directory  flags start off as false */
 	ack = false;
-	dirActive = false; 
+
+	if(getcwd(origin, sizeof(origin)) == NULL) {
+		fprintf(stderr, "Could not get cwd\n");
+		exit(EXIT_FAILURE);
+	}
+	
 
 	/*Create the server socket */
 	socketFd = createSocket(servinfo);
@@ -245,6 +255,8 @@ void server(struct addrinfo *servinfo) {
 				fprintf(stderr, "Error sending msg!\n");
 				exit(EXIT_FAILURE);
 			}
+
+			resetWorkingDirectory(origin); //set the directory to the start. 
 		}
 
 		/*Reset the read buffer */
@@ -295,6 +307,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		close(*clientFd); 
 		*clientFd = 0; 
 		*ack  = false; 
+
 
 		return;
 
@@ -371,6 +384,7 @@ void lsCommand(int clientFd) {
 		strncat(fn, dir->d_name, sizeof(dir->d_name)); 
 		strncat(fn, ENDLINE, sizeof(ENDLINE));
 		msgSend(clientFd, fn, 0);
+
 		memset(fn, 0, sizeof(fn)); /*Reset filename buffer */
 	}
 
@@ -380,4 +394,14 @@ void lsCommand(int clientFd) {
 
 }
 
+/*Function to reset the working directory back to original when client leaves. */
+void resetWorkingDirectory(char* origin) {
+
+	if(chdir(origin) != 0) { 
+		fprintf(stderr, "Could not return to original directory!\n");
+		exit(EXIT_FAILURE);
+	}
+
+	return ;
+}
        
