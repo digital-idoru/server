@@ -15,7 +15,7 @@ A Simple Server
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <regex.h>
+
 
 #ifndef DEFINES
 #define DEFINES
@@ -282,6 +282,8 @@ void server(struct addrinfo *servinfo) {
 
 void commands(char* sBuffer, int* clientFd, bool *ack) {
 
+	char cwd[256];
+
 	if(strcasecmp(sBuffer, "quit") == 0) { 
 
 		/*Close the connection */
@@ -296,10 +298,21 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "helo", 4) == 0) {
 		msgSend(*clientFd, rHELO, 0);
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
-		/*cd commands */
-		printf("the directory is: %s\n", getDirectoryPath(sBuffer));
+
+		if(chdir(getDirectoryPath(sBuffer)) == 0) {
+				msgSend(*clientFd, dirCh, 0);
+			} else {
+				msgSend(*clientFd, dirChF, 0);
+			}	       
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
-		/*Code for pwd command */       	
+		
+		if(getcwd(cwd, sizeof(cwd)) != NULL) {
+			msgSend(*clientFd, cwd, 0);
+		}
+		else {
+			msgSend(*clientFd, nD, 0);
+		} 
+			      
 	} else if(strncasecmp(sBuffer, "ls", 2) == 0) {
 		/*Code for ls command */
 	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
