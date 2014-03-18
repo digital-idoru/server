@@ -247,7 +247,7 @@ void server(struct addrinfo *servinfo) {
 
     if(ack == true) { //Only process commands after HELO has been recieved. 
 
-      if(strcasecmp(sBuffer, "helo") == 0) { 
+      if(strcasecmp(sBuffer, "quit") == 0) { 
 	/*Close the connection */
 	msgSend(clientFd, goodbye, 0); 
 
@@ -255,7 +255,7 @@ void server(struct addrinfo *servinfo) {
 	clientFd = 0; //Reset the client file descriptor to wait for the next connection. 
 	ack  = false; //Reset HELO flag. 
 
-      } else if(strcasecmp(sBuffer, "helo") == 0) {
+      } else if(strcasecmp(sBuffer, "hello") == 0) {
 	msgSend(clientFd, rHELO, 0);
 
       } else if(strcasecmp(sBuffer, "cd") == 0) {
