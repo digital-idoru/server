@@ -53,6 +53,13 @@ const char* goodbye = "100 Don't go away mad, just go away.\n";
 const char* unrec = "401 Unrecognized Input.\n"; 
 const char* nHelo = "550 You must give the HELO command.\n";
 const char* rHELO = "450 HELO already issued\n"; 
+const char* dirCh = "201 Directory changed\n";
+const char* dirChF = "401 Directory change failed.\n";
+const char* pwdS = "202: ";
+const char* nD = " 402 No current directory.\n";
+const char* getNF = "403 No such file.\n";
+
+
 
 int main(void) {
 
