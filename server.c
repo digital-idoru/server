@@ -46,6 +46,7 @@ bool checkFullMsg(char*, int); //Function to check if entire msg has arrived.
 void server(struct addrinfo*);  //Handles the main loop of the server
 void myBind(struct addrinfo*, int); //Binds a socket to the port 
 void myListen(int); //Listens on a port with a bound socket 
+void commands(char*, int, bool*);
 
 
 /*Response messages to client commands. */
@@ -259,38 +260,10 @@ void server(struct addrinfo *servinfo) {
 		//Need to remove the special characters appended to the string by the telnet. 
 		sBuffer = sanatize(buffer); 
 
-		if(ack == true) { //Only process commands after HELO has been recieved. 
-
-			if(strcasecmp(sBuffer, "quit") == 0) { 
-				/*Close the connection */
-				msgSend(clientFd, goodbye, 0); 
-
-				close(clientFd); //Close the client socket
-				clientFd = 0; //Reset the client file descriptor to wait for the next connection. 
-				ack  = false; //Reset HELO flag. 
-
-			} else if(strncasecmp(sBuffer, "hello", 6) == 0) {
-				msgSend(clientFd, rHELO, 0);
-
-			} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
-
-     
-			} else if(strcasecmp(sBuffer, "pwd") == 0) {
-
-				/*Code for pwd command */       	
-			} else if(strcasecmp(sBuffer, "ls") == 0) {
-				/*Code for ls command */
-
-			} else if(strcasecmp(sBuffer, "get") == 0) {
-				/*code for get command */
-
-			} else if(strcasecmp(sBuffer, "put") == 0) {
-				/*code for put command */
-
-			} else {
-				/*Unrecognized input */
-				msgSend(clientFd, unrec, 0);
-			}
+		if(ack == true) {
+			
+			/* Process commands only after the hello */
+			commands(sBuffer, clientFd, &ack);
 
 		} else if(checkHelo(sBuffer) == true) {
 			len = strlen(helo);		
@@ -305,4 +278,43 @@ void server(struct addrinfo *servinfo) {
 	} //End While
 
 	return;
+}
+
+void commands(char* sBuffer, int clientFd, bool *ack) {
+
+	if(strcasecmp(sBuffer, "quit") == 0) { 
+		/*Close the connection */
+		msgSend(clientFd, goodbye, 0); 
+
+		close(clientFd); //Close the client socket
+		clientFd = 0; //Reset the client file descriptor to wait for the next connection. 
+		*ack  = false; //Reset HELO flag. 
+
+	} else if(strncasecmp(sBuffer, "hello", 6) == 0) {
+		msgSend(clientFd, rHELO, 0);
+
+	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
+
+     
+	} else if(strcasecmp(sBuffer, "pwd") == 0) {
+
+		/*Code for pwd command */       	
+	} else if(strcasecmp(sBuffer, "ls") == 0) {
+		/*Code for ls command */
+
+	} else if(strcasecmp(sBuffer, "get") == 0) {
+		/*code for get command */
+
+	} else if(strcasecmp(sBuffer, "put") == 0) {
+		/*code for put command */
+
+	} else {
+		/*Unrecognized input */
+		msgSend(clientFd, unrec, 0);
+	}
+
+
+
+
+	return ;
 }
