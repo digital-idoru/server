@@ -342,20 +342,24 @@ void lsCommand(int clientFd) {
   struct dirent *dir; //dirent structure holds information about the directory. 
   DIR *directory; //directory(?)
   char wd[256];
+  char fn[1024];
 
 
   if(getcwd(wd, sizeof(wd)) != NULL){
-    dir = opendir(wd);
+    directory = opendir(wd);
   }
   else {
     msgSend(clientFd, nD, 0);
     return;
   }
 
-  while( (directory = readdir(dir)) != NULL)
-    msgSend(clientFd, directory->d_name, 0);
+  while( (dir = readdir(directory)) != NULL) {
+    strcpy(fn, dir->d_name);
+    strcpy(fn, "\n\0");
+    msgSend(clientFd, fn, 0);
+  }
 
-
+  msgSend(clientFd, ".", 0);
   return;
 
 }
