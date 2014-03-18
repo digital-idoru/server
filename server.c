@@ -356,9 +356,12 @@ void lsCommand(int clientFd) {
   }
 
   while( (dir = readdir(directory)) != NULL) {
-    strcpy(fn, dir->d_name);
-    strncat(fn, ENDLINE,sizeof(ENDLINE));
+    strncpy(fn, ".", 1);
+    strncat(fn, dir->d_name, sizeof(dir->d_name)); 
+    strncat(fn, ENDLINE, sizeof(ENDLINE));
     msgSend(clientFd, fn, 0);
+    memset(fn, 0, sizeof(fn));
+    
   }
 
   msgSend(clientFd, ".\n", 0);
