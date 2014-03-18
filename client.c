@@ -9,6 +9,8 @@ Client
 #define true 1
 #define false 1 
 
+#define PORT 40000
+
 #endif
 
 
