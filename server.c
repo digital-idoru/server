@@ -342,7 +342,8 @@ char* getDirectoryPath(char* buffer) {
 	return dir;
 }
 
-
+/*Function to handle the ls command from the client */
+/*List files in a directory, return is void, parameter is the client socket file descriptor */
 void lsCommand(int clientFd) {
 
 	struct dirent *dir; //dirent structure holds information about the directory. 
@@ -363,7 +364,10 @@ void lsCommand(int clientFd) {
 
 	/*Loop through the files in the opened directory */
 	while((dir = readdir(directory)) != NULL) {
-		strncpy(fn, ".", 1);
+
+		if(strncmp(dir->d_name, ".", 1) == 0)
+			strncat(fn, ".", 1);
+
 		strncat(fn, dir->d_name, sizeof(dir->d_name)); 
 		strncat(fn, ENDLINE, sizeof(ENDLINE));
 		msgSend(clientFd, fn, 0);
