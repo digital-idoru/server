@@ -28,6 +28,8 @@ A Simple Server
 #define BUFSIZE 250 
 #define PORT 40000
 #define PORT_STRING_LEN 6
+#define PATH_SIZE 256
+#define FILENAME_SIZE 1024 
 
 #define ENDLINE "\n\0"
 
@@ -282,7 +284,8 @@ void server(struct addrinfo *servinfo) {
 
 void commands(char* sBuffer, int* clientFd, bool *ack) {
 
-	char cwd[256];
+  
+	char cwd[PATH_SIZE]; 
 
 	if(strcasecmp(sBuffer, "quit") == 0) { 
 
@@ -300,10 +303,10 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
 
 		if(chdir(getDirectoryPath(sBuffer)) == 0) {
-				msgSend(*clientFd, dirCh, 0);
-			} else {
-				msgSend(*clientFd, dirChF, 0);
-			}	       
+			msgSend(*clientFd, dirCh, 0);
+		} else {
+			msgSend(*clientFd, dirChF, 0);
+		}	       
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
 		
 		if(getcwd(cwd, sizeof(cwd)) != NULL) {
@@ -315,7 +318,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		} 
 			      
 	} else if(strncasecmp(sBuffer, "ls", 2) == 0) {
-	  	  lsCommand(*clientFd);	 
+		lsCommand(*clientFd);	 
 	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
 		/*code for get command */
 	} else if(strncasecmp(sBuffer, "put", 3) == 0) {
@@ -341,31 +344,33 @@ char* getDirectoryPath(char* buffer) {
 
 void lsCommand(int clientFd) {
 
-  struct dirent *dir; //dirent structure holds information about the directory. 
-  DIR *directory; //directory(?)
-  char wd[256];
-  char fn[1024];
+	struct dirent *dir; //dirent structure holds information about the directory. 
+	DIR *directory; //directory(?)
+	char wd[PATH_SIZE];
+	char fn[FILENAME_SIZE];
 
+	/*Open the directory */
+	if(getcwd(wd, sizeof(wd)) != NULL){
+		directory = opendir(wd);
+	}
+	else {
+		/*If it fails then just send an error message to the client */
+		msgSend(clientFd, nD, 0);
+		return;
+	}
 
-  if(getcwd(wd, sizeof(wd)) != NULL){
-    directory = opendir(wd);
-  }
-  else {
-    msgSend(clientFd, nD, 0);
-    return;
-  }
+	/*Loop through the files in the opened directory */
+	while( (dir = readdir(directory)) != NULL) {
+		strncpy(fn, ".", 1);
+		strncat(fn, dir->d_name, sizeof(dir->d_name)); 
+		strncat(fn, ENDLINE, sizeof(ENDLINE));
+		msgSend(clientFd, fn, 0);
+		memset(fn, 0, sizeof(fn)); /*Reset filename buffer */
+	}
 
-  while( (dir = readdir(directory)) != NULL) {
-    strncpy(fn, ".", 1);
-    strncat(fn, dir->d_name, sizeof(dir->d_name)); 
-    strncat(fn, ENDLINE, sizeof(ENDLINE));
-    msgSend(clientFd, fn, 0);
-    memset(fn, 0, sizeof(fn));
-    
-  }
-
-  msgSend(clientFd, ".\n", 0);
-  return;
+	/*Send the final line and return */
+	msgSend(clientFd, ".\n", 0);
+	return;
 
 }
 
