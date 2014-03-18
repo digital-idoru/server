@@ -283,6 +283,7 @@ void server(struct addrinfo *servinfo) {
 void commands(char* sBuffer, int clientFd, bool *ack) {
 
 	if(strcasecmp(sBuffer, "quit") == 0) { 
+
 		/*Close the connection */
 		msgSend(clientFd, goodbye, 0); 
 
@@ -292,29 +293,20 @@ void commands(char* sBuffer, int clientFd, bool *ack) {
 
 	} else if(strncasecmp(sBuffer, "hello", 6) == 0) {
 		msgSend(clientFd, rHELO, 0);
-
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
-
-     
+		/*cd commands */
 	} else if(strcasecmp(sBuffer, "pwd") == 0) {
-
 		/*Code for pwd command */       	
 	} else if(strcasecmp(sBuffer, "ls") == 0) {
 		/*Code for ls command */
-
 	} else if(strcasecmp(sBuffer, "get") == 0) {
 		/*code for get command */
-
 	} else if(strcasecmp(sBuffer, "put") == 0) {
 		/*code for put command */
-
 	} else {
 		/*Unrecognized input */
 		msgSend(clientFd, unrec, 0);
 	}
-
-
-
 
 	return ;
 }
