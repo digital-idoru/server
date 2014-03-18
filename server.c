@@ -63,9 +63,9 @@ char* nHelo = "550 You must give the HELO command.\n\n";
 char* rHELO = "450 HELO already issued\n\n"; 
 char* dirCh = "201 Directory changed\n\n";
 char* dirChF = "401 Directory change failed.\n\n";
-char* pwdS = "202: ";
 char* nD = " 402 No current directory.\n\n";
 char* getNF = "403 No such file.\n\n";
+char* list = "203 list follows, terminated by .\n\n";
 
 
 
@@ -310,10 +310,11 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
 		
 		if(getcwd(cwd, sizeof(cwd)) != NULL) {
-			strcat(cwd, "\n\n");
+			msgSend(*clientFd, "203 ", 0);
+			strncat(cwd, ENDLINE, sizeof(ENDLINE));
 			msgSend(*clientFd, cwd, 0);
-		}
-		else {
+			memset(cwd, 0, sizeof(cwd));
+		} else {
 			msgSend(*clientFd, nD, 0);
 		} 
 			      
@@ -346,21 +347,22 @@ void lsCommand(int clientFd) {
 
 	struct dirent *dir; //dirent structure holds information about the directory. 
 	DIR *directory; //directory(?)
-	char wd[PATH_SIZE];
-	char fn[FILENAME_SIZE];
+	char wd[PATH_SIZE]; //working directory path 
+	char fn[FILENAME_SIZE]; //filename buffer 
 
 	/*Open the directory */
 	if(getcwd(wd, sizeof(wd)) != NULL){
 		directory = opendir(wd);
-	}
-	else {
+	} else {
 		/*If it fails then just send an error message to the client */
 		msgSend(clientFd, nD, 0);
 		return;
 	}
+	
+	msgSend(clientFd, list, 0);
 
 	/*Loop through the files in the opened directory */
-	while( (dir = readdir(directory)) != NULL) {
+	while((dir = readdir(directory)) != NULL) {
 		strncpy(fn, ".", 1);
 		strncat(fn, dir->d_name, sizeof(dir->d_name)); 
 		strncat(fn, ENDLINE, sizeof(ENDLINE));
