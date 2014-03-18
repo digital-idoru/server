@@ -52,15 +52,15 @@ char* getDirectoryPath(char*);
 /*Response messages to client commands. */
 char* welcome_msg = "\n\n~La Vie Est Drole~\n\n";
 char* helo = "220 Connection Established.\n\n";
-char* goodbye = "100 Don't go away mad, just go away.\n";
-char* unrec = "401 Unrecognized Input.\n"; 
-char* nHelo = "550 You must give the HELO command.\n";
-char* rHELO = "450 HELO already issued\n"; 
-char* dirCh = "201 Directory changed\n";
-char* dirChF = "401 Directory change failed.\n";
+char* goodbye = "100 Don't go away mad, just go away.\n\n";
+char* unrec = "401 Unrecognized Input.\n\n"; 
+char* nHelo = "550 You must give the HELO command.\n\n";
+char* rHELO = "450 HELO already issued\n\n"; 
+char* dirCh = "201 Directory changed\n\n";
+char* dirChF = "401 Directory change failed.\n\n";
 char* pwdS = "202: ";
-char* nD = " 402 No current directory.\n";
-char* getNF = "403 No such file.\n";
+char* nD = " 402 No current directory.\n\n";
+char* getNF = "403 No such file.\n\n";
 
 
 
