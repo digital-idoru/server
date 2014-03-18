@@ -218,7 +218,7 @@ void server(struct addrinfo *servinfo) {
 
 	rBuff = BUFSIZE;
 
-	/*Hello and active directory  flags start off as false */
+	/*Hello and active directory start off as false and original */
 	ack = false;
 
 	if(getcwd(origin, sizeof(origin)) == NULL) {
