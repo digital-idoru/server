@@ -272,8 +272,10 @@ void server(struct addrinfo *servinfo) {
 				msgSend(clientFd, rHELO, 0);
 
 			} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
-				printf("The recieved buffer was: %s", sBuffer);
-				printf("Directory: %s found!\n", getDirName(sBuffer));	
+
+				/*This is a pretty horrible way to do it, but I need to be able to test a few things first */
+				printf("The recieved buffer was: %s\n", sBuffer);
+				printf("Directory: %s found!\n", sBuffer+3);
      
 			} else if(strcasecmp(sBuffer, "pwd") == 0) {
 
