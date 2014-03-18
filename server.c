@@ -46,8 +46,9 @@ bool checkFullMsg(char*, int); //Function to check if entire msg has arrived.
 void server(struct addrinfo*);  //Handles the main loop of the server
 void myBind(struct addrinfo*, int); //Binds a socket to the port 
 void myListen(int); //Listens on a port with a bound socket 
-void commands(char*, int*, bool*);
-char* getDirectoryPath(char*);
+void commands(char*, int*, bool*); //handles the commands from the client
+char* getDirectoryPath(char*); //Extracts directory path from correctly formatted command
+void lsCommand(int); //lists all files in the current directory. 
 
 /*Response messages to client commands. */
 char* welcome_msg = "\n\n~La Vie Est Drole~\n\n";
