@@ -15,6 +15,7 @@ A Simple Server
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <regex.h>
 
 #ifndef DEFINES
 #define DEFINES
@@ -45,7 +46,7 @@ bool checkFullMsg(char*, int); //Function to check if entire msg has arrived.
 void server(struct addrinfo*);  //Handles the main loop of the server
 void myBind(struct addrinfo*, int); //Binds a socket to the port 
 void myListen(int); //Listens on a port with a bound socket 
-char* getDirName(char*); //Gets directory URL for the commands that need it. 
+
 
 /*Response messages to client commands. */
 const char* welcome_msg = "\n\n~WELCOME TO THE DESERT OF THE REAL~\n\n";
@@ -268,14 +269,11 @@ void server(struct addrinfo *servinfo) {
 				clientFd = 0; //Reset the client file descriptor to wait for the next connection. 
 				ack  = false; //Reset HELO flag. 
 
-			} else if(strcasecmp(sBuffer, "hello") == 0) {
+			} else if(strncasecmp(sBuffer, "hello", 6) == 0) {
 				msgSend(clientFd, rHELO, 0);
 
 			} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
 
-				/*This is a pretty horrible way to do it, but I need to be able to test a few things first */
-				printf("The recieved buffer was: %s\n", sBuffer);
-				printf("Directory: %s found!\n", sBuffer+3);
      
 			} else if(strcasecmp(sBuffer, "pwd") == 0) {
 
@@ -307,11 +305,4 @@ void server(struct addrinfo *servinfo) {
 	} //End While
 
 	return;
-}
-
-/* Function to return the directory passed to the server from the client */
-char* getDirName(char* buffer) {
-	char* dir; 
-	dir = strtok(buffer, " \t");
-	return dir;
 }
