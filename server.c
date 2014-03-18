@@ -13,7 +13,8 @@ A Simple Server
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <sys/stat.h>
+#include <dirent.h>
 
 #ifndef DEFINES
 #define DEFINES
@@ -63,9 +64,12 @@ const char* getNF = "403 No such file.\n";
 
 int main(void) {
 
-  char nodeName[PORT_STRING_LEN];       //String to hold the port number. 
-  struct addrinfo hints; 		//Hints to send to getAddressInfo
-  struct  addrinfo *servinfo; 		//Pointer to the linked list of results. 
+  char nodeName[PORT_STRING_LEN]; //String to hold the port number. 
+  struct addrinfo hints; //Hints to send to getAddressInfo
+  struct  addrinfo *servinfo; //Pointer to the linked list of results. 
+
+  struct dirent *dir; //dirent structure holds information about the directory. 
+  DIR *directory; //directory(?)
 
   //We need to make sure that the hints struct is empty to start with. 
   memset(&hints, 0, sizeof(hints)); 
@@ -196,6 +200,7 @@ void server(struct addrinfo *servinfo) {
   int rBuff;				//size of the recieve buffer
   int recSize;				//size of the recieved msg.
   bool ack;				//acknowledge flag of HELO command
+  bool dirActive; //No active directory until the user uses the cd command to change to one. 
 
   /*Set up the recieved buffer */
   char buffer[BUFSIZE]; 
@@ -268,7 +273,7 @@ void server(struct addrinfo *servinfo) {
       } else if(strcasecmp(sBuffer, "cd") == 0) {
 	/* Code for cd command here */
       } else if(strcasecmp(sBuffer, "pwd") == 0) {
-	/*Code for pwd command */
+	/*Code for pwd command */       	
       } else if(strcasecmp(sBuffer, "ls") == 0) {
 	/*Code for ls command */
       } else if(strcasecmp(sBuffer, "get") == 0) {
