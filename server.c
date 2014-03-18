@@ -307,6 +307,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
 		
 		if(getcwd(cwd, sizeof(cwd)) != NULL) {
+			strcat(cwd, "\n\n");
 			msgSend(*clientFd, cwd, 0);
 		}
 		else {
