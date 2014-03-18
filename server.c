@@ -70,9 +70,6 @@ int main(void) {
 	struct addrinfo hints; //Hints to send to getAddressInfo
 	struct  addrinfo *servinfo; //Pointer to the linked list of results. 
 
-	struct dirent *dir; //dirent structure holds information about the directory. 
-	DIR *directory; //directory(?)
-
 	//We need to make sure that the hints struct is empty to start with. 
 	memset(&hints, 0, sizeof(hints)); 
 
@@ -315,7 +312,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		} 
 			      
 	} else if(strncasecmp(sBuffer, "ls", 2) == 0) {
-		/*Code for ls command */
+	  	  lsCommand(*clientFd);	 
 	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
 		/*code for get command */
 	} else if(strncasecmp(sBuffer, "put", 3) == 0) {
@@ -339,6 +336,27 @@ char* getDirectoryPath(char* buffer) {
 }
 
 
+void lsCommand(int clientFd) {
 
+  struct dirent *dir; //dirent structure holds information about the directory. 
+  DIR *directory; //directory(?)
+  char wd[256];
+
+
+  if(getcwd(wd, sizeof(wd)) != NULL){
+    dir = opendir(wd);
+  }
+  else {
+    msgSend(clientFd, nD, 0);
+    return;
+  }
+
+  while( (directory = readdir(dir)) != NULL)
+    msgSend(clientFd, directory->d_name, 0);
+
+
+  return;
+
+}
 
        
