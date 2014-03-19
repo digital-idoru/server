@@ -17,6 +17,8 @@ Client
 #define false 1 
 
 #define PORT "40000" //Server listens on port 40000
+#define EXIT "EXIT"
+#define EOL "\n\r"
 
 #endif
 
@@ -24,11 +26,19 @@ Client
 void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
+void communicate(int, char*);
 
 int main(void) {
 
 	struct addrinfo *res;
 	int sock = 0;
+ 
+	char recvBuffer[1024]; /* recieve msg from the server */
+	char command[1024]; /*send commands to the server */
+
+	/* Make sure the buffers have no junk data */
+	memset(recvBuffer, 0, sizeof recvBuffer);
+	memset(command, 0, sizeof command);
 
 	/*Set up the address info */
 	setAddressInfo(&res);	
@@ -36,12 +46,38 @@ int main(void) {
 	/* Connect to the server */
 	sock = connectToServer(sock, res);
 
+	/*No call to bind seems necessary. The kernal will handle our local port */
+
+	/*The server should send a greeting on connection, lets catch it and print it out */
+	recv(sock, (void*)recvBuffer, 1024, 0);
+	printf("%s", recvBuffer); //Debug 
+
+	while(strncasecmp(command, EXIT, strlen(EXIT)) != 0) {
+
+		scanf("%s", command); //get the command from stdin
+
+		printf("SENDING COMMAND TO SERVER: %s\n", command); //debug
+
+		communicate(sock, command); //send the command to the server.
+
+		printf("WAITING FOR RESPONSE\n"); //debug
+		
+		memset(recvBuffer, 0, sizeof recvBuffer);
+		if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == -1) {
+			fprintf(stderr, "Some sort of rec failure.");
+			exit(EXIT_FAILURE);
+		}
+
+		printf("RESPONSE RECIEVED: "); //debug
+		printf("%s", recvBuffer); //Debug
+ 
+	}
 
 	freeaddrinfo(res); //free the results linked list when we're done 
 	return 0;
 }
 
-/* Sets a linked list of address results to the resullist */
+/* Sets a linked list of address results to the resultlist */
 void setAddressInfo(struct addrinfo **resultList) {
 
 	struct addrinfo hints; //hints structure 
@@ -95,4 +131,21 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 	}
 	printf("CONNECTION COMPLETE!\n"); //DEBUG 
 	return socketFileDescriptor; 
+}
+
+/*communicate with the server while the connection is up */
+void communicate(int socket, char* command) {
+
+
+	int msgLength = strlen(command);
+
+	//strncat(command, EOL, strlen(EOL));
+
+	if(send(socket, (void*)command, msgLength, 0) != msgLength ) {
+		printf("Error sending message.\n");
+	}
+
+	printf("MSG sent: %s\n", command);
+
+	return;
 }
