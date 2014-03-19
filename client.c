@@ -16,14 +16,14 @@ Client
 #define true 1
 #define false 1 
 
-#define PORT "40000"
+#define PORT "40000" //Server listens on port 40000
 
 #endif
 
 /*function prototypes */
 void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
-void connectToServer(int, struct addrinfo*);
+int connectToServer(int, struct addrinfo*);
 
 int main(void) {
 
@@ -31,19 +31,17 @@ int main(void) {
 	int sock = 0;
 
 	/*Set up the address info */
-	setAddressInfo(&res);
-
-	/* Set up the socket file descriptor */
-	sock = setSocket(res);
+	setAddressInfo(&res);	
 	
 	/* Connect to the server */
-	connectToServer(sock, res);
+	sock = connectToServer(sock, res);
 
 
 	freeaddrinfo(res); //free the results linked list when we're done 
 	return 0;
 }
 
+/* Sets a linked list of address results to the resullist */
 void setAddressInfo(struct addrinfo **resultList) {
 
 	struct addrinfo hints; //hints structure 
@@ -62,16 +60,39 @@ void setAddressInfo(struct addrinfo **resultList) {
 	return;
 }
 
+/*Returns a socket file descriptor to be used in the network communication */
 int setSocket(struct addrinfo* info) {
 
 	return socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 }
 
-void connectToServer(int socketFileDescriptor, struct addrinfo *info) {
+/*Connect to the server */ 
+int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 
-	if(connect(socketFileDescriptor, info->ai_addr, info->ai_addrlen) != 0) {
-		fprintf(stderr, "Could not connect to remote host.\n"); exit(EXIT_FAILURE);
+
+	struct addrinfo *probe;
+
+	/*Connect to the first valid one */
+	for(probe = info; probe != NULL; probe = probe->ai_next) {
+
+		if ( (socketFileDescriptor = setSocket(probe)) == -1) {
+			fprintf(stderr, "Could not get socket!\n");
+			continue;
+		}
+
+		if(connect(socketFileDescriptor, probe->ai_addr, probe->ai_addrlen) != 0) {
+			fprintf(stderr, "Could not connect to remote host.\n");
+			continue;
+		}
+
+		if(probe == NULL) {
+			fprintf(stderr, "Couldn't connect.\n");
+			exit(EXIT_FAILURE);
+		}
+
+		break; //If we get to this point then everything worked, so break. 
+
 	}
-
-	return;
+	printf("CONNECTION COMPLETE!\n"); //DEBUG 
+	return socketFileDescriptor; 
 }
