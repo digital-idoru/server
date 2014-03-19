@@ -66,7 +66,7 @@ int main(void) {
 		if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == -1) {
 			fprintf(stderr, "Some sort of rec failure.");
 			exit(EXIT_FAILURE);
-		}
+		} 
 
 		printf("RESPONSE RECIEVED: "); //debug
 		printf("%s", recvBuffer); //Debug
@@ -108,6 +108,8 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 
 	struct addrinfo *probe;
 
+	printf("Connecting to server... ");
+
 	/*Connect to the first valid one */
 	for(probe = info; probe != NULL; probe = probe->ai_next) {
 
@@ -129,7 +131,8 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 		break; //If we get to this point then everything worked, so break. 
 
 	}
-	printf("CONNECTION COMPLETE!\n"); //DEBUG 
+
+	printf("connect complete!\n"); 
 	return socketFileDescriptor; 
 }
 
@@ -139,9 +142,7 @@ void communicate(int socket, char* command) {
 
 	int msgLength = strlen(command);
 
-	//strncat(command, EOL, strlen(EOL));
-
-	if(send(socket, (void*)command, msgLength, 0) != msgLength ) {
+       	if(send(socket, (void*)command, msgLength+1, 0) != msgLength ) {
 		printf("Error sending message.\n");
 	}
 

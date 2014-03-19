@@ -266,10 +266,15 @@ void server(struct addrinfo *servinfo) {
 			//Recieve the message from the connected client. 
 			if((recSize = recv(clientFd, buffer, rBuff, 0)) <= 0) {
 				fprintf(stderr, "Error recieving data or client has closed connection!\n");
-				exit(EXIT_FAILURE);
-			} 
+				exit(EXIT_FAILURE); 
+				
+			}
+			
+			printf("Message recieved: %s\n", buffer); //debug 
 
 		}while(checkFullMsg(buffer, recSize) != true);
+
+		printf("Processing msg\n"); //debug 
 
 		//Need to remove the special characters appended to the string by the telnet. 
 		sBuffer = sanatize(buffer); 
@@ -286,7 +291,8 @@ void server(struct addrinfo *servinfo) {
 
 		} else if(ack != true){
 			len = strlen(nHelo);
-			send(clientFd, nHelo, len, 0);
+			printf("sending message\n"); //debug 
+			msgSend(clientFd, nHelo, 0);
 		}
 
 	} //End While
