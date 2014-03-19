@@ -26,7 +26,7 @@ void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
-
+void getResponse(int, char*);
 
 int main(void) {
 
@@ -58,13 +58,10 @@ int main(void) {
 
 
 		communicate(sock, command); //send the command to the server.
-		       
-		memset(recvBuffer, 0, sizeof recvBuffer);
-		if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == 0) {
-			fprintf(stderr, "Connection shutdown");
-			exit(EXIT_FAILURE);
-		} 
 
+		/*Get the response from the server */
+		memset(recvBuffer, 0, sizeof recvBuffer);
+		getResponse(sock, recvBuffer); 
 		printf("%s", recvBuffer); 
  
 	}
@@ -144,3 +141,15 @@ void communicate(int socket, char* command) {
 	return;
 }
 
+void getResponse(int socket, char* recieved) {
+		
+	       
+
+	/* if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == 0) { */
+	/* 	fprintf(stderr, "Connection shutdown"); */
+	/* 	exit(EXIT_FAILURE); */
+	/* }  */
+
+
+	return;
+}
