@@ -54,22 +54,18 @@ int main(void) {
 
 	while(strncasecmp(command, EXIT, strlen(EXIT)) != 0) {
 
-		scanf("%s", command); //get the command from stdin
-
-		printf("SENDING COMMAND TO SERVER: %s\n", command); //debug
+		memset(command, 0, sizeof command);
+		scanf("%s", command); //get the command from stdin	
 
 		communicate(sock, command); //send the command to the server.
-
-		printf("WAITING FOR RESPONSE\n"); //debug
-		
+		       
 		memset(recvBuffer, 0, sizeof recvBuffer);
 		if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == -1) {
 			fprintf(stderr, "Some sort of rec failure.");
 			exit(EXIT_FAILURE);
 		} 
 
-		printf("RESPONSE RECIEVED: "); //debug
-		printf("%s", recvBuffer); //Debug
+		printf("%s", recvBuffer); 
  
 	}
 
@@ -139,14 +135,11 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 /*communicate with the server while the connection is up */
 void communicate(int socket, char* command) {
 
+	int msgLength = strlen(command)+1;
 
-	int msgLength = strlen(command);
-
-       	if(send(socket, (void*)command, msgLength+1, 0) != msgLength ) {
+       	if(send(socket, (void*)command, msgLength, 0) != msgLength) {
 		printf("Error sending message.\n");
 	}
-
-	printf("MSG sent: %s\n", command);
-
+       
 	return;
 }
