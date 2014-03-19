@@ -18,7 +18,6 @@ Client
 
 #define PORT "40000" //Server listens on port 40000
 #define EXIT "EXIT"
-#define EOL "\n\r"
 
 #endif
 
@@ -27,6 +26,7 @@ void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
+
 
 int main(void) {
 
@@ -46,22 +46,22 @@ int main(void) {
 	/* Connect to the server */
 	sock = connectToServer(sock, res);
 
-	/*No call to bind seems necessary. The kernal will handle our local port */
-
 	/*The server should send a greeting on connection, lets catch it and print it out */
 	recv(sock, (void*)recvBuffer, 1024, 0);
-	printf("%s", recvBuffer); //Debug 
+	printf("%s", recvBuffer);
 
+	
 	while(strncasecmp(command, EXIT, strlen(EXIT)) != 0) {
 
 		memset(command, 0, sizeof command);
-		scanf("%s", command); //get the command from stdin	
+		scanf("%s", command); //get the command from stdin. The problem is that a command can be two strings. 
+
 
 		communicate(sock, command); //send the command to the server.
 		       
 		memset(recvBuffer, 0, sizeof recvBuffer);
-		if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == -1) {
-			fprintf(stderr, "Some sort of rec failure.");
+		if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == 0) {
+			fprintf(stderr, "Connection shutdown");
 			exit(EXIT_FAILURE);
 		} 
 
@@ -143,3 +143,4 @@ void communicate(int socket, char* command) {
        
 	return;
 }
+
