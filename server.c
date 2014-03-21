@@ -329,7 +329,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
 		
 		if(getcwd(cwd, sizeof(cwd)) != NULL) {
-			msgSend(*clientFd, "203 ", 0);
+			msgSend(*clientFd, "200 ", 0);
 			strncat(cwd, ENDLINE, sizeof(ENDLINE));
 			msgSend(*clientFd, cwd, 0);
 			memset(cwd, 0, sizeof(cwd));

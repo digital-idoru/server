@@ -9,6 +9,7 @@ Client
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <unistd.h>
 
 #ifndef DEFINES
 #define DEFINES
@@ -56,14 +57,12 @@ int main(void) {
 		memset(command, 0, sizeof command);
 		scanf("%s", command); //get the command from stdin. The problem is that a command can be two strings. 
 
-
-		communicate(sock, command); //send the command to the server.
+		/*Send the message to the server */
+		communicate(sock, command); 
 
 		/*Get the response from the server */
 		memset(recvBuffer, 0, sizeof recvBuffer);
 		getResponse(sock, recvBuffer); 
-		printf("%s", recvBuffer); 
- 
 	}
 
 	freeaddrinfo(res); //free the results linked list when we're done 
@@ -142,14 +141,30 @@ void communicate(int socket, char* command) {
 }
 
 void getResponse(int socket, char* recieved) {
-		
-	       
 
-	/* if(recv(sock, (void*)recvBuffer, sizeof recvBuffer, 0) == 0) { */
-	/* 	fprintf(stderr, "Connection shutdown"); */
-	/* 	exit(EXIT_FAILURE); */
-	/* }  */
+	/*Set the socket to be nonblocking until we get the entire message. */
 
+	/* fcntl(socket, F_SETFL, O_NONBLOCK); */
+	printf("GETTING RESPONSE\n"); //debug 
+
+	/* while( recv(socket, (void*)recieved, 1024, MSG_DONTWAIT) != -1); { */
+
+	/* 	printf("%s", recieved); */
+	/* 	memset(recieved, 0, 1024); */
+
+	/* } */
+
+	/* fcntl(socket, F_SETFL,  */
+
+
+	recv(socket, (void*)recieved, 1024, 0);
+	printf("%s", recieved);
+
+	if(strncasecmp(recieved, "203", 3) == 0) {
+		memset(recieved, 0, 1024);
+		recv(socket, (void*)recieved, 1024, 0);
+		printf("%s", recieved);
+	}
 
 	return;
 }
