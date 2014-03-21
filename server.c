@@ -370,6 +370,8 @@ void lsCommand(int clientFd) {
 	char wd[PATH_SIZE]; //working directory path 
 	char fn[FILENAME_SIZE]; //filename buffer 
 
+	memset(fn, 0, sizeof fn);
+
 	/*Open the directory */
 	if(getcwd(wd, sizeof(wd)) != NULL){
 		directory = opendir(wd);
