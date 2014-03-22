@@ -140,26 +140,13 @@ void communicate(int socket, char* command) {
 	return;
 }
 
+/*Read the response from the server */ 
 void getResponse(int socket, char* recieved) {
-
-	/*Set the socket to be nonblocking until we get the entire message. */
-
-	/* fcntl(socket, F_SETFL, O_NONBLOCK); */
-	printf("GETTING RESPONSE\n"); //debug 
-
-	/* while( recv(socket, (void*)recieved, 1024, MSG_DONTWAIT) != -1); { */
-
-	/* 	printf("%s", recieved); */
-	/* 	memset(recieved, 0, 1024); */
-
-	/* } */
-
-	/* fcntl(socket, F_SETFL,  */
-
 
 	recv(socket, (void*)recieved, 1024, 0);
 	printf("%s", recieved);
 
+	/*Kind of a haskish way of doing things, but I'll call it a protocol and move on */ 
 	if(strncasecmp(recieved, "203", 3) == 0) {
 		memset(recieved, 0, 1024);
 		recv(socket, (void*)recieved, 1024, 0);
