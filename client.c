@@ -20,6 +20,8 @@ Client
 #define PORT "40000" //Server listens on port 40000
 #define EXIT "EXIT"
 
+#define CODELENGTH 3
+
 #endif
 
 /*function prototypes */
@@ -147,7 +149,7 @@ void getResponse(int socket, char* recieved) {
 	printf("%s", recieved);
 
 	/*Kind of a haskish way of doing things, but I'll call it a protocol and move on */ 
-	if(strncasecmp(recieved, "203", 3) == 0) {
+	if(strncasecmp(recieved, "203", CODELENGTH) == 0) {
 		memset(recieved, 0, 1024);
 		recv(socket, (void*)recieved, 1024, 0);
 		printf("%s", recieved);
