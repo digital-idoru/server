@@ -10,6 +10,7 @@ Client
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #ifndef DEFINES
 #define DEFINES
@@ -30,18 +31,30 @@ int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
 void getResponse(int, char*);
+void readLine(char*, int);
 
 int main(void) {
 
 	struct addrinfo *res;
 	int sock = 0;
- 
-	char recvBuffer[1024]; /* recieve msg from the server */
-	char command[1024]; /*send commands to the server */
+	char* recvBuffer; /* recieve msg from the server */
+	char* command; /*send commands to the server */
+
+
+	/*Need to allocate it this way to make sure we can realloc*/
+	command = (char*)malloc(sizeof(char)*1024);
+	if(command == NULL) {
+		fprintf(stderr,"Could not allocate heap memory.\n"); exit(EXIT_FAILURE);
+	}
+
+	recvBuffer = (char*)malloc(sizeof(char)*1024);
+	if(recvBuffer == NULL) {
+		fprintf(stderr, "Could not allocate heap memory.\n"); exit(EXIT_FAILURE);
+	}
 
 	/* Make sure the buffers have no junk data */
-	memset(recvBuffer, 0, sizeof recvBuffer);
-	memset(command, 0, sizeof command);
+	memset(recvBuffer, 0,  1024);
+	memset(command, 0, 1024);
 
 	/*Set up the address info */
 	setAddressInfo(&res);	
@@ -56,18 +69,21 @@ int main(void) {
 	
 	while(strncasecmp(command, EXIT, strlen(EXIT)) != 0) {
 
-		memset(command, 0, sizeof command);
-		scanf("%s", command); //get the command from stdin. The problem is that a command can be two strings. 
+		memset(command, 0, 1024);
+		fgets(command, 1024, stdin);			       
 
 		/*Send the message to the server */
 		communicate(sock, command); 
 
 		/*Get the response from the server */
-		memset(recvBuffer, 0, sizeof recvBuffer);
+		memset(recvBuffer, 0, 1024);
 		getResponse(sock, recvBuffer); 
 	}
 
 	freeaddrinfo(res); //free the results linked list when we're done 
+	free(command);
+	free(recvBuffer);
+	close(sock);
 	return 0;
 }
 
@@ -102,7 +118,7 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 
 	struct addrinfo *probe;
 
-	printf("Connecting to server... ");
+	printf("Connecting to server... \n");
 
 	/*Connect to the first valid one */
 	for(probe = info; probe != NULL; probe = probe->ai_next) {
@@ -117,16 +133,18 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 			continue;
 		}
 
-		if(probe == NULL) {
-			fprintf(stderr, "Couldn't connect.\n");
-			exit(EXIT_FAILURE);
-		}
-
 		break; //If we get to this point then everything worked, so break. 
 
 	}
 
-	printf("connect complete!\n"); 
+	if(probe == NULL) {
+		fprintf(stderr, "Couldn't connect.\n");
+		exit(EXIT_FAILURE);
+	} else {
+
+		printf("connect complete!\n"); 
+	}
+
 	return socketFileDescriptor; 
 }
 
@@ -145,15 +163,42 @@ void communicate(int socket, char* command) {
 /*Read the response from the server */ 
 void getResponse(int socket, char* recieved) {
 
-	recv(socket, (void*)recieved, 1024, 0);
+	readLine(recieved, socket);
 	printf("%s", recieved);
 
-	/*Kind of a haskish way of doing things, but I'll call it a protocol and move on */ 
-	if(strncasecmp(recieved, "203", CODELENGTH) == 0) {
-		memset(recieved, 0, 1024);
-		recv(socket, (void*)recieved, 1024, 0);
-		printf("%s", recieved);
+	return;
+}
+
+/*Read from the file specified by fd until there is no data left in it to be read */
+void readLine(char* buffer, int fd) {
+
+	int flags;
+
+	/*set the socket to nonblocking */
+	flags = fcntl(fd, F_GETFL);
+	flags = flags | O_NONBLOCK;
+	fcntl(fd, flags);
+
+	/*Read the data from the socket*/
+	while(read(fd, (void*)buffer, 1024)) {      	
+
+		/* Instead just get the number of bytes in the file and then read until some counter with the total number of bytes read so far reaches the number of bytes
+		   in the file */
+
+		//This isn't correct 
+		if(memchr(buffer, '\n', 1024) != NULL) {
+			break;
+		} else {
+			buffer = realloc((void*)buffer, 256);
+			if(buffer == NULL) {
+				fprintf(stderr, "Something went wrong allocating more space!!\n"); exit(EXIT_FAILURE);
+			}
+		}
 	}
+
+	/*Reset original flags */
+	flags = flags & ~O_NONBLOCK;
+	fcntl(fd, flags);
 
 	return;
 }
