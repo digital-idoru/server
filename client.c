@@ -33,6 +33,7 @@ int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
 void readLine(char**, int);
+void getFile(int);
 
 int main(void) {
 
@@ -63,6 +64,8 @@ int main(void) {
 	/* Connect to the server */
 	sock = connectToServer(sock, res);
 
+
+
 	/*The server should send a greeting on connection, lets catch it and print it out */
 	recv(sock, (void*)recvBuffer, BLOCKSIZE, 0);
 	printf("%s", recvBuffer);
@@ -76,15 +79,20 @@ int main(void) {
 		/*Send the message to the server */
 		communicate(sock, command); 
 
-		/*Get the response from the server */
-		recvBuffer = (char*)realloc(recvBuffer, BLOCKSIZE); //This thing can get huge so we reset it back to BLOCKSIZE 
-		if(recvBuffer == NULL) {
-			fprintf(stderr, "Holy hell some memory is now floating in the ether.\n"); exit(EXIT_FAILURE);
-		}
-		memset(recvBuffer, 0, BLOCKSIZE);
+		if(strncasecmp(command, "get", 3) == 0) {
+			getFile(sock);			
+		} else {
+			
+			/*Get the response from the server */
+			recvBuffer = (char*)realloc(recvBuffer, BLOCKSIZE); //This thing can get huge so we reset it back to BLOCKSIZE 
+			if(recvBuffer == NULL) {
+				fprintf(stderr, "Holy hell some memory is now floating in the ether.\n"); exit(EXIT_FAILURE);
+			}
+			memset(recvBuffer, 0, BLOCKSIZE);
 	
-		readLine(&recvBuffer, sock);
-		printf("%s", recvBuffer);
+			readLine(&recvBuffer, sock);
+			printf("%s", recvBuffer);
+		}
 	}
 
 
@@ -210,11 +218,38 @@ void readLine(char** buffer, int fd) {
 void getFile(int fd) {
 
 	unsigned int fileSize = 0;
+	int bytesWritten = 0; 
+	int bytesRead = 0;
+	int newFile = 0; 
 	char fileName[256]; 
+	unsigned char buffer[256];
 
+	memset(fileName, 0, 256);
+	memset(buffer, 0, 256);
 
+	/*Get the file size */
+	read(fd, (void*)(&fileSize), sizeof(unsigned int));
 
+	/*Get the File name*/
+	read(fd, (void*)fileName, 256);
 
+	printf("Beginning file drop....\nTransfering file: %s\nSize of file (in Bytes): %d\n\n", fileName, fileSize);
 
+	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU);
+
+	printf("Transfering...");
+	while(bytesWritten < fileSize) {
+		
+		bytesRead += read(fd, (void*)buffer, 256);
+		bytesWritten += write(newFile, (void*)buffer, 256);
+		memset(buffer, 0, 256);
+		if(bytesWritten == fileSize)
+			break;
+
+		printf(".");
+	}
+
+	printf("\nTransfer Complete! %d bytes written\n%d bytes read.\n", bytesWritten, bytesRead);
+	close(newFile);
 	return;
 }
