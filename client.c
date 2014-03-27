@@ -71,10 +71,16 @@ int main(void) {
 	printf("%s", recvBuffer);
 
 	
-	while(strncasecmp(command, EXIT, strlen(EXIT)) != 0) {
+	while(true) {
 
 		memset(command, 0, BLOCKSIZE);
+		memset(recvBuffer, 0, BLOCKSIZE);
+		
 		fgets(command, BLOCKSIZE, stdin);			       
+
+		if(strncasecmp(command, EXIT, strlen(EXIT)) == 0) {
+			break;
+		}
 
 		/*Send the message to the server */
 		communicate(sock, command); 
@@ -88,7 +94,7 @@ int main(void) {
 			if(recvBuffer == NULL) {
 				fprintf(stderr, "Holy hell some memory is now floating in the ether.\n"); exit(EXIT_FAILURE);
 			}
-			memset(recvBuffer, 0, BLOCKSIZE);
+		
 	
 			readLine(&recvBuffer, sock);
 			printf("%s", recvBuffer);
@@ -250,7 +256,7 @@ void getFile(int fd) {
 		printf(".");
 	}
 
-	printf("\nTransfer Complete! %d bytes written\n%d bytes read.\n\n", bytesWritten, bytesRead);
+	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
 	close(newFile);
 	return;
 }
