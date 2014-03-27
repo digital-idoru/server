@@ -233,7 +233,7 @@ void getFile(int fd) {
 	/*Get the File name*/
 	read(fd, (void*)fileName, 256);
 
-	printf("Beginning file drop....\nTransfering file: %s\nSize of file (in Bytes): %d\n\n", fileName, fileSize);
+	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
 
 	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU);
 
