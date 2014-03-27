@@ -22,6 +22,8 @@ Client
 #define EXIT "EXIT"
 
 #define CODELENGTH 3
+#define BLOCKSIZE 512
+
 
 #endif
 
@@ -30,8 +32,7 @@ void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
-void getResponse(int, char*);
-void readLine(char*, int);
+void readLine(char**, int);
 
 int main(void) {
 
@@ -42,19 +43,19 @@ int main(void) {
 
 
 	/*Need to allocate it this way to make sure we can realloc*/
-	command = (char*)malloc(sizeof(char)*1024);
+	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(command == NULL) {
 		fprintf(stderr,"Could not allocate heap memory.\n"); exit(EXIT_FAILURE);
 	}
 
-	recvBuffer = (char*)malloc(sizeof(char)*1024);
+	recvBuffer = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(recvBuffer == NULL) {
 		fprintf(stderr, "Could not allocate heap memory.\n"); exit(EXIT_FAILURE);
 	}
 
 	/* Make sure the buffers have no junk data */
-	memset(recvBuffer, 0,  1024);
-	memset(command, 0, 1024);
+	memset(recvBuffer, 0, BLOCKSIZE);
+	memset(command, 0, BLOCKSIZE);
 
 	/*Set up the address info */
 	setAddressInfo(&res);	
@@ -63,27 +64,33 @@ int main(void) {
 	sock = connectToServer(sock, res);
 
 	/*The server should send a greeting on connection, lets catch it and print it out */
-	recv(sock, (void*)recvBuffer, 1024, 0);
+	recv(sock, (void*)recvBuffer, BLOCKSIZE, 0);
 	printf("%s", recvBuffer);
 
 	
 	while(strncasecmp(command, EXIT, strlen(EXIT)) != 0) {
 
-		memset(command, 0, 1024);
-		fgets(command, 1024, stdin);			       
+		memset(command, 0, BLOCKSIZE);
+		fgets(command, BLOCKSIZE, stdin);			       
 
 		/*Send the message to the server */
 		communicate(sock, command); 
 
 		/*Get the response from the server */
-		memset(recvBuffer, 0, 1024);
-		getResponse(sock, recvBuffer); 
+		recvBuffer = (char*)realloc(recvBuffer, BLOCKSIZE); //This thing can get huge so we reset it back to BLOCKSIZE 
+		if(recvBuffer == NULL) {
+			fprintf(stderr, "Holy hell some memory is now floating in the ether.\n"); exit(EXIT_FAILURE);
+		}
+		memset(recvBuffer, 0, BLOCKSIZE);
+	
+		readLine(&recvBuffer, sock);
+		printf("%s", recvBuffer);
 	}
 
-	freeaddrinfo(res); //free the results linked list when we're done 
-	free(command);
-	free(recvBuffer);
-	close(sock);
+
+	free(command); //free the command buffer
+	free(recvBuffer); //free the recieved buffer 
+	close(sock); //close our connection 
 	return 0;
 }
 
@@ -145,6 +152,7 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 		printf("connect complete!\n"); 
 	}
 
+	freeaddrinfo(info); //free the results linked list when we're done 
 	return socketFileDescriptor; 
 }
 
@@ -160,45 +168,41 @@ void communicate(int socket, char* command) {
 	return;
 }
 
-/*Read the response from the server */ 
-void getResponse(int socket, char* recieved) {
-
-	readLine(recieved, socket);
-	printf("%s", recieved);
-
-	return;
-}
-
 /*Read from the file specified by fd until there is no data left in it to be read */
-void readLine(char* buffer, int fd) {
+void readLine(char** buffer, int fd) {
 
-	int flags;
+	int i = 1, currentBytes = 0; 
+	char* intermediate;
+	unsigned int msgBytes = 0;
 
-	/*set the socket to nonblocking */
-	flags = fcntl(fd, F_GETFL);
-	flags = flags | O_NONBLOCK;
-	fcntl(fd, flags);
-
-	/*Read the data from the socket*/
-	while(read(fd, (void*)buffer, 1024)) {      	
-
-		/* Instead just get the number of bytes in the file and then read until some counter with the total number of bytes read so far reaches the number of bytes
-		   in the file */
-
-		//This isn't correct 
-		if(memchr(buffer, '\n', 1024) != NULL) {
-			break;
-		} else {
-			buffer = realloc((void*)buffer, 256);
-			if(buffer == NULL) {
-				fprintf(stderr, "Something went wrong allocating more space!!\n"); exit(EXIT_FAILURE);
-			}
-		}
+	intermediate = (char*)malloc(sizeof(char)*BLOCKSIZE);
+	if(intermediate == NULL) {
+		fprintf(stderr, "Could not allocate heap space!\n");
+		exit(EXIT_FAILURE);
 	}
 
-	/*Reset original flags */
-	flags = flags & ~O_NONBLOCK;
-	fcntl(fd, flags);
+	memset(intermediate, 0, sizeof(char)*BLOCKSIZE);
 
+	/* Get the size, in bytes, of the message payload */
+	read(fd, (void*)(&msgBytes), sizeof(unsigned int));
+	printf("Size (in bytes) of message is: %d\n", msgBytes); //debug 
+
+	/*Read the data from the socket*/
+	while(currentBytes < msgBytes) {      		       
+
+		currentBytes += read(fd, (void*)intermediate, BLOCKSIZE);
+
+		strncat(*buffer, intermediate, sizeof(char)*currentBytes);
+		memset(intermediate, 0, sizeof(char)*BLOCKSIZE);
+
+		*buffer = realloc((void*)*buffer, BLOCKSIZE*(2*i));		
+		if(buffer == NULL) {
+			fprintf(stderr, "Something went wrong allocating more space!!\n"); exit(EXIT_FAILURE);
+		}
+	      
+		i++;
+	}
+
+	free(intermediate);
 	return;
 }

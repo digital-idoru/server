@@ -4,6 +4,15 @@ CSI416 Project 2
 A Simple Server
 *************************************/
 
+/*************************************
+Message protocal:
+payload size (in bytes) followed by that many bytes.
+These are SEPERATE write calls. The client first reads the payload size,
+then reads payload size bytes from the socket.
+*************************************/
+
+
+
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -31,7 +40,7 @@ A Simple Server
 #define PATH_SIZE 256
 #define FILENAME_SIZE 1024 
 
-#define ENDLINE "\n\0"
+#define ENDLINE "\n"
 
 #endif
 
@@ -43,7 +52,7 @@ typedef uint8_t bool;
 /*Function prototypes */
 void setAddressInfoStandard(const char*, struct addrinfo, struct addrinfo**); //set address info with some standard params.
 int createSocket(struct  addrinfo *); //Function to return the fd of a socket
-void msgSend(int, char*, int); //Function to send a text based message to the client. 
+void msgSend(int, char*, unsigned int); //Function to send a text based message to the client. 
 bool checkHelo(char*); //Function to check if the HELO command was issued properly.
 char* sanatize(char*); //Function to remove extra symbols added by telnet.
 bool checkFullMsg(char*, int); //Function to check if entire msg has arrived. 
@@ -162,13 +171,17 @@ int createSocket(struct addrinfo *res) {
 	return socketFileDescriptor;
 }
 
-//Function to send a message to a connected client. 
-//Parameters include the client socket, the message to be sent, and the flag. 
-void msgSend(int cS, char* message, int flag_param) {
 
-	int len = strlen(message);
+/*Function to send message to client.*/
+void msgSend(int cS, char* message, unsigned int payloadSize) {
 
-	if((send(cS, message, len, flag_param)) < 0) {
+	/*Send payload size */
+	if(write(cS, (void*)(&payloadSize), sizeof(unsigned int)) < 0) {
+		fprintf(stderr, "Could not send payload size to client!\n"); exit(EXIT_FAILURE);
+	}
+
+	/*Send the data*/
+	if(write(cS, (void*)message, payloadSize) < 0) {
 		fprintf(stderr, "Error sending message to client!\n");
 		exit(EXIT_FAILURE);
 	}
@@ -186,7 +199,7 @@ void myBind(struct addrinfo* servinfo, int socketFd) {
 
 /* Listen on the port for connections */
 void myListen(int socketFd) {
-	if((listen(socketFd, BACKLOG)) < 0) {
+	if(listen(socketFd, BACKLOG) < 0) {
 		fprintf(stderr, "Error Listening on socket #: %d\n", socketFd);
 		exit(EXIT_FAILURE);
 	}
@@ -201,7 +214,7 @@ void server(struct addrinfo *servinfo) {
 	struct sockaddr_storage client_addr; 	//Hold information about the client connection from an accept()
 	socklen_t addr_size; 			//size of sockaddr struct to be used in the accept();
 
-	int len; 			        //Length msg to send. 
+	unsigned int len; 			//Length msg to send in bytes. 
 	int rBuff;				//size of the recieve buffer
 	int recSize;				//size of the recieved msg.
 	bool ack;				//acknowledge flag of HELO command
@@ -285,14 +298,14 @@ void server(struct addrinfo *servinfo) {
 			commands(sBuffer, &clientFd, &ack);
 
 		} else if(checkHelo(sBuffer) == true) {
-			len = strlen(helo);		
-			msgSend(clientFd, helo, 0);
+			len = strlen(helo)+1;		
+			msgSend(clientFd, helo, len);
 			ack = true;
 
 		} else if(ack != true){
-			len = strlen(nHelo);
+			len = strlen(nHelo)+1;
 			printf("sending message\n"); //debug 
-			msgSend(clientFd, nHelo, 0);
+			msgSend(clientFd, nHelo, len);
 		}
 
 	} //End While
@@ -304,48 +317,73 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 
   
 	char cwd[PATH_SIZE]; 
+	unsigned int msgBytes = 0;
 
 	if(strcasecmp(sBuffer, "quit") == 0) { 
 
 		/*Close the connection */
-		msgSend(*clientFd, goodbye, 0); 
+		msgSend(*clientFd, goodbye, (strlen(goodbye)+1)); 
 
 		close(*clientFd); 
 		*clientFd = 0; 
 		*ack  = false; 
 
-
 		return;
 
-	} else if(strncasecmp(sBuffer, "helo", 4) == 0) {
+	} else if(strncasecmp(sBuffer, "helo", 4) == 0) {		
+		
+		msgBytes = strlen(rHELO)+1;
 		msgSend(*clientFd, rHELO, 0);
+
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
 
 		if(chdir(getDirectoryPath(sBuffer)) == 0) {
-			msgSend(*clientFd, dirCh, 0);
+
+			msgBytes = strlen(dirCh)+1;
+			msgSend(*clientFd, dirCh, msgBytes);
+
 		} else {
-			msgSend(*clientFd, dirChF, 0);
+			
+			msgBytes = strlen(dirChF)+1;
+			msgSend(*clientFd, dirChF, msgBytes);
+
 		}	       
+
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
 		
 		if(getcwd(cwd, sizeof(cwd)) != NULL) {
-			msgSend(*clientFd, "200 ", 0);
+
+			strncat(cwd, "200 ", 4); 
 			strncat(cwd, ENDLINE, sizeof(ENDLINE));
-			msgSend(*clientFd, cwd, 0);
+
+			msgBytes = strlen(cwd)+1;
+			msgSend(*clientFd, cwd, msgBytes);
+
 			memset(cwd, 0, sizeof(cwd));
+
 		} else {
-			msgSend(*clientFd, nD, 0);
+			
+			msgBytes = strlen(nD)+1; 
+			msgSend(*clientFd, nD, msgBytes);
 		} 
 			      
 	} else if(strncasecmp(sBuffer, "ls", 2) == 0) {
+
 		lsCommand(*clientFd);	 
+
 	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
+
 		/*code for get command */
+
 	} else if(strncasecmp(sBuffer, "put", 3) == 0) {
+
 		/*code for put command */
+
 	} else {
+
 		/*Unrecognized input */
-		msgSend(*clientFd, unrec, 0);
+		msgBytes = strlen(unrec)+1;
+		msgSend(*clientFd, unrec, msgBytes);
 	}
 
 	return ;
@@ -366,38 +404,57 @@ char* getDirectoryPath(char* buffer) {
 void lsCommand(int clientFd) {
 
 	struct dirent *dir; //dirent structure holds information about the directory. 
-	DIR *directory; //directory(?)
+	DIR *directory; //directory structure to hold information about the files. 
 	char wd[PATH_SIZE]; //working directory path 
-	char fn[FILENAME_SIZE]; //filename buffer 
+	char* fn = NULL;
+	int fLen = 0;
 
-	memset(fn, 0, sizeof fn);
+
 
 	/*Open the directory */
 	if(getcwd(wd, sizeof(wd)) != NULL){
+
 		directory = opendir(wd);
+
 	} else {
+
 		/*If it fails then just send an error message to the client */
-		msgSend(clientFd, nD, 0);
+		msgSend(clientFd, nD, (strlen(nD)+1));
 		return;
+
 	}
-	
-	msgSend(clientFd, list, 0);
+	       
+	fn = (char*)malloc(sizeof(char)*(strlen(list)+1));
+	if(fn == NULL) {
+		fprintf(stderr, "Error allocating heap memory.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	strncat(fn, list, strlen(list));
 
 	/*Loop through the files in the opened directory */
 	while((dir = readdir(directory)) != NULL) {
 
+		fLen = strlen(fn);
+		       		
+		fn = (char*)realloc(fn, fLen+(dir->d_namlen)+sizeof(ENDLINE));
+
 		if(strncmp(dir->d_name, ".", 1) == 0)
 			strncat(fn, ".", 1);
 
-		strncat(fn, dir->d_name, sizeof(dir->d_name)); 
+		strncat(fn, dir->d_name, dir->d_namlen); 
 		strncat(fn, ENDLINE, sizeof(ENDLINE));
-		msgSend(clientFd, fn, 0);
 
-		memset(fn, 0, sizeof(fn)); /*Reset filename buffer */
 	}
 
 	/*Send the final line and return */
-	msgSend(clientFd, ".\n", 0);
+	fn = realloc(fn, strlen(fn)+3);
+	strncat(fn, ".\n", 2);
+
+	msgSend(clientFd, fn, (strlen(fn)+1));
+
+	free(fn);
+
 	return;
 
 }
