@@ -24,7 +24,7 @@ then reads payload size bytes from the socket.
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <dirent.h>
-
+#include <fcntl.h>
 
 #ifndef DEFINES
 #define DEFINES
@@ -41,6 +41,8 @@ then reads payload size bytes from the socket.
 #define FILENAME_SIZE 1024 
 
 #define ENDLINE "\n"
+#define NOFILE "403 No such file\n"
+
 
 #endif
 
@@ -63,6 +65,8 @@ void commands(char*, int*, bool*); //handles the commands from the client
 char* getDirectoryPath(char*); //Extracts directory path from correctly formatted command
 void lsCommand(int); //lists all files in the current directory. 
 void resetWorkingDirectory(char*); //Reset the directory after client exits. 
+void sendFile(int, char*); //sends a file, if it exist, to the client. 
+
 
 /*Response messages to client commands. */
 char* welcome_msg = "\n\n~La Vie Est Drole~\n\n";
@@ -318,6 +322,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
   
 	char cwd[PATH_SIZE]; 
 	unsigned int msgBytes = 0;
+	char* filename; 
 
 	if(strcasecmp(sBuffer, "quit") == 0) { 
 
@@ -373,7 +378,13 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 
 	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
 
-		/*code for get command */
+		strtok(sBuffer, " \t");
+
+		if( (filename = strtok(NULL, " \t")) != NULL) {
+			sendFile(*clientFd, filename); 
+		} else {
+			msgSend(*clientFd, NOFILE, sizeof NOFILE);
+		}
 
 	} else if(strncasecmp(sBuffer, "put", 3) == 0) {
 
@@ -470,3 +481,34 @@ void resetWorkingDirectory(char* origin) {
 	return ;
 }
        
+void sendFile(int fd, char* filename) {
+
+	int file; //File descriptor for the file to open.
+	unsigned int fileSize; //Size of the file in bytes. 
+	unsigned char* buffer[1024]; //Buffer for writting. 
+	int bytesWritten = 0; //Bytes written to the socket
+
+	memset(buffer, 0, 1024);
+
+	file = open(filename, O_RDONLY); 
+	if(file == -1) {
+		msgSend(fd, NOFILE, sizeof NOFILE);
+		return;
+	}
+
+	/*Get the size, in bytes, of the file */
+	fileSize = lseek(file, 0, SEEK_END);
+	lseek(file, 0, SEEK_SET);
+	
+	/*Write the file size to the socket */
+	write(fd, (void*)(&fileSize), sizeof(unsigned int));
+	
+	while(bytesWritten < fileSize) {
+
+		read(file, (void*)(buffer), 1024);
+		bytesWritten += write(fd, (void*)(buffer), 1024);
+	}
+	
+
+	return;
+}

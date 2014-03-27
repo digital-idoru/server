@@ -206,3 +206,15 @@ void readLine(char** buffer, int fd) {
 	free(intermediate);
 	return;
 }
+
+void getFile(int fd) {
+
+	unsigned int fileSize = 0;
+	char fileName[256]; 
+
+
+
+
+
+	return;
+}
