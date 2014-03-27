@@ -243,13 +243,14 @@ void getFile(int fd) {
 		bytesRead += read(fd, (void*)buffer, 256);
 		bytesWritten += write(newFile, (void*)buffer, 256);
 		memset(buffer, 0, 256);
+
 		if(bytesWritten == fileSize)
 			break;
 
 		printf(".");
 	}
 
-	printf("\nTransfer Complete! %d bytes written\n%d bytes read.\n", bytesWritten, bytesRead);
+	printf("\nTransfer Complete! %d bytes written\n%d bytes read.\n\n", bytesWritten, bytesRead);
 	close(newFile);
 	return;
 }

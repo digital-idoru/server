@@ -513,6 +513,6 @@ void sendFile(int fd, char* filename) {
 		memset(buffer, 0, 256);
 	}
 	
-
+	close(file);
 	return;
 }
