@@ -8,7 +8,7 @@ A Simple Server
 Message protocal:
 payload size (in bytes) followed by that many bytes.
 These are SEPERATE write calls. The client first reads the payload size,
-then reads payload size bytes from the socket.
+then reads payload-size bytes from the socket.
 *************************************/
 
 
