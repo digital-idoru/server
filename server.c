@@ -320,9 +320,12 @@ void server(struct addrinfo *servinfo) {
 void commands(char* sBuffer, int* clientFd, bool *ack) {
 
   
-	char cwd[PATH_SIZE]; 
+	char cwd[PATH_SIZE], fullPath[PATH_SIZE+512]; 
 	unsigned int msgBytes = 0;
 	char* filename; 
+
+	memset(cwd, 0, sizeof(char)*PATH_SIZE);
+	memset(fullPath, 0, sizeof(char)*PATH_SIZE+512);
 
 	if(strcasecmp(sBuffer, "quit") == 0) { 
 
@@ -355,14 +358,17 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		}	       
 
 	} else if(strncasecmp(sBuffer, "pwd", 3) == 0) {
-		
+
+		strncat(fullPath, "200 ", 4); 
+		strncat(fullPath, "file://", 7);
+
 		if(getcwd(cwd, sizeof(cwd)) != NULL) {
 
-			strncat(cwd, "200 ", 4); 
-			strncat(cwd, ENDLINE, sizeof(ENDLINE));
+			strncat(fullPath, cwd, strlen(cwd));
+			strncat(fullPath, ENDLINE, sizeof(ENDLINE));
 
-			msgBytes = strlen(cwd)+1;
-			msgSend(*clientFd, cwd, msgBytes);
+			msgBytes = strlen(fullPath)+1;
+			msgSend(*clientFd, fullPath, msgBytes);
 
 			memset(cwd, 0, sizeof(cwd));
 
@@ -417,8 +423,8 @@ void lsCommand(int clientFd) {
 	struct dirent *dir; //dirent structure holds information about the directory. 
 	DIR *directory; //directory structure to hold information about the files. 
 	char wd[PATH_SIZE]; //working directory path 
-	char* fn = NULL;
-	int fLen = 0;
+	char* fn = NULL; //File name
+	int fLen = 0; //length of the file..?
 
 
 
@@ -448,10 +454,16 @@ void lsCommand(int clientFd) {
 
 		fLen = strlen(fn);
 		       		
-		fn = (char*)realloc(fn, fLen+(dir->d_namlen)+sizeof(ENDLINE));
+		/*Expand the size of the array */ 
+		fn = (char*)realloc(fn, (fLen+(dir->d_namlen)+sizeof(ENDLINE)+1));
+		if(fn == NULL) {
+			fprintf(stderr, "Error allocating space on the heap! Also, a memory leak has just occured.\n");
+			exit(EXIT_FAILURE);
+		}
 
-		if(strncmp(dir->d_name, ".", 1) == 0)
+		if(strncmp(dir->d_name, ".", 1) == 0) {
 			strncat(fn, ".", 1);
+		}
 
 		strncat(fn, dir->d_name, dir->d_namlen); 
 		strncat(fn, ENDLINE, sizeof(ENDLINE));
@@ -460,6 +472,11 @@ void lsCommand(int clientFd) {
 
 	/*Send the final line and return */
 	fn = realloc(fn, strlen(fn)+3);
+	if(fn == NULL) {
+		fprintf(stderr, "Error allocating heap memory, in addition, a memory leak has just occured.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	strncat(fn, ".\n", 2);
 
 	msgSend(clientFd, fn, (strlen(fn)+1));

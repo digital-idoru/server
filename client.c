@@ -32,30 +32,23 @@ void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
-void readLine(char**, int);
+void readLine(int);
 void getFile(int);
 
 int main(void) {
 
 	struct addrinfo *res;
 	int sock = 0;
-	char* recvBuffer; /* recieve msg from the server */
 	char* command; /*send commands to the server */
+	char welcomeMsg[1000];
 
-
-	/*Need to allocate it this way to make sure we can realloc*/
+	/*Allocate space for the command */
 	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(command == NULL) {
 		fprintf(stderr,"Could not allocate heap memory.\n"); exit(EXIT_FAILURE);
 	}
 
-	recvBuffer = (char*)malloc(sizeof(char)*BLOCKSIZE);
-	if(recvBuffer == NULL) {
-		fprintf(stderr, "Could not allocate heap memory.\n"); exit(EXIT_FAILURE);
-	}
-
 	/* Make sure the buffers have no junk data */
-	memset(recvBuffer, 0, BLOCKSIZE);
 	memset(command, 0, BLOCKSIZE);
 
 	/*Set up the address info */
@@ -64,47 +57,40 @@ int main(void) {
 	/* Connect to the server */
 	sock = connectToServer(sock, res);
 
-
-
 	/*The server should send a greeting on connection, lets catch it and print it out */
-	recv(sock, (void*)recvBuffer, BLOCKSIZE, 0);
-	printf("%s", recvBuffer);
-
+	read(sock, (void*)welcomeMsg, sizeof(char)*1000);
+	printf("%s", welcomeMsg);
 	
+	/*Interactive with the server */
 	while(true) {
-
+			     
 		memset(command, 0, BLOCKSIZE);
-		memset(recvBuffer, 0, BLOCKSIZE);
-		
+
 		fgets(command, BLOCKSIZE, stdin);			       
 
 		if(strncasecmp(command, EXIT, strlen(EXIT)) == 0) {
-			break;
+			printf("Closing connection...\n");
+			close(sock); 
+			printf("Connection closed. \n");
+			break;			
 		}
 
 		/*Send the message to the server */
 		communicate(sock, command); 
 
-		if(strncasecmp(command, "get", 3) == 0) {
+		if(strncasecmp(command, "get", 3) == 0) {			
+			/*Begin file transfer */
 			getFile(sock);			
+
 		} else {
 			
-			/*Get the response from the server */
-			recvBuffer = (char*)realloc(recvBuffer, BLOCKSIZE); //This thing can get huge so we reset it back to BLOCKSIZE 
-			if(recvBuffer == NULL) {
-				fprintf(stderr, "Holy hell some memory is now floating in the ether.\n"); exit(EXIT_FAILURE);
-			}
-		
-	
-			readLine(&recvBuffer, sock);
-			printf("%s", recvBuffer);
+			readLine(sock);
+
 		}
 	}
 
 
 	free(command); //free the command buffer
-	free(recvBuffer); //free the recieved buffer 
-	close(sock); //close our connection 
 	return 0;
 }
 
@@ -183,11 +169,13 @@ void communicate(int socket, char* command) {
 }
 
 /*Read from the file specified by fd until there is no data left in it to be read */
-void readLine(char** buffer, int fd) {
+void readLine(int fd) {
 
-	int i = 1, currentBytes = 0; 
-	char* intermediate;
+	int currentBytes = 0, totalBytes = 0; 
+	char* intermediate = NULL;
+	char* response = NULL; 
 	unsigned int msgBytes = 0;
+	int currentSize = BLOCKSIZE; 
 
 	intermediate = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(intermediate == NULL) {
@@ -195,29 +183,49 @@ void readLine(char** buffer, int fd) {
 		exit(EXIT_FAILURE);
 	}
 
+	response = (char*)malloc(sizeof(char)*BLOCKSIZE);
+	if(response == NULL) {
+		fprintf(stderr, "Could not allocate heap space!\n");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(intermediate, 0, sizeof(char)*BLOCKSIZE);
+	memset(response, 0, sizeof(char)*BLOCKSIZE);
 
 	/* Get the size, in bytes, of the message payload */
 	read(fd, (void*)(&msgBytes), sizeof(unsigned int));
 	printf("Size (in bytes) of message is: %d\n", msgBytes); //debug 
 
 	/*Read the data from the socket*/
-	while(currentBytes < msgBytes) {      		       
+	while(totalBytes < msgBytes) {      		       
 
-		currentBytes += read(fd, (void*)intermediate, BLOCKSIZE);
+		currentBytes = read(fd, (void*)intermediate, BLOCKSIZE);
 
-		strncat(*buffer, intermediate, sizeof(char)*currentBytes);
+		/*Copy the bytes in intermediate to response+totalBytes, i.e to the end of the array */
+		memcpy(response+totalBytes, intermediate, currentBytes); 
+
+		/*Update current bytes count, and save ourselves some memory if we're done */
+		totalBytes += currentBytes;
+		if(totalBytes == msgBytes) {
+			break;
+		}
+
+		/*Clear the intermediate buffer */
 		memset(intermediate, 0, sizeof(char)*BLOCKSIZE);
 
-		*buffer = realloc((void*)*buffer, BLOCKSIZE*(2*i));		
-		if(buffer == NULL) {
-			fprintf(stderr, "Something went wrong allocating more space!!\n"); exit(EXIT_FAILURE);
-		}
-	      
-		i++;
+		/*Expand the response array by 512 bytes */
+		currentSize += BLOCKSIZE; // currentSize = currentSize + 512  
+		response = (char*)realloc((void*)response, currentSize);		
+		if(response == NULL) {
+			fprintf(stderr, "Something went wrong allocating more space!! Moreover, a memory leak has occured.\n"); exit(EXIT_FAILURE);
+		}	      		
 	}
 
+	printf("%s\n", response);
+	
+	/*Free the buffers */
 	free(intermediate);
+	free(response);
 	return;
 }
 
@@ -225,8 +233,8 @@ void getFile(int fd) {
 
 	unsigned int fileSize = 0;
 	int bytesWritten = 0; 
-	int bytesRead = 0;
 	int newFile = 0; 
+	int currentBytes = 0; 
 	char fileName[256]; 
 	unsigned char buffer[256];
 
@@ -238,6 +246,10 @@ void getFile(int fd) {
 
 	/*Get the File name*/
 	read(fd, (void*)fileName, 256);
+	if(strncmp(fileName, "403", 3) == 0) {
+		printf("File not found~!\n");
+		return;
+	}
 
 	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
 
@@ -246,8 +258,8 @@ void getFile(int fd) {
 	printf("Transfering...");
 	while(bytesWritten < fileSize) {
 		
-		bytesRead += read(fd, (void*)buffer, 256);
-		bytesWritten += write(newFile, (void*)buffer, 256);
+		currentBytes = read(fd, (void*)buffer, 256);
+		bytesWritten += write(newFile, (void*)buffer, currentBytes);
 		memset(buffer, 0, 256);
 
 		if(bytesWritten == fileSize)
