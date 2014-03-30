@@ -502,10 +502,11 @@ void sendFile(int fd, char* filename) {
 
 	int file; //File descriptor for the file to open.
 	unsigned int fileSize; //Size of the file in bytes. 
-	unsigned char* buffer[256]; //Buffer for writting. 
+	unsigned char* buffer[512]; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
+	int bytesRead = 0; 
 
-	memset(buffer, 0, 256);
+	memset(buffer, 0, sizeof(char)*512);
 
 	file = open(filename, O_RDONLY); 
 	if(file == -1) {
@@ -525,9 +526,14 @@ void sendFile(int fd, char* filename) {
 	
 	while(bytesWritten < fileSize) {
 
-		read(file, (void*)(buffer), 256);
-		bytesWritten += write(fd, (void*)(buffer), 256);
-		memset(buffer, 0, 256);
+		bytesRead = read(file, (void*)(buffer), 512);
+		bytesWritten += write(fd, (void*)(buffer), bytesRead);
+
+		if(bytesWritten == fileSize) {
+			break;
+		}
+
+		memset(buffer, 0, 512);
 	}
 	
 	close(file);

@@ -235,17 +235,17 @@ void getFile(int fd) {
 	int bytesWritten = 0; 
 	int newFile = 0; 
 	int currentBytes = 0; 
-	char fileName[256]; 
-	unsigned char buffer[256];
+	char fileName[BLOCKSIZE]; 
+	unsigned char buffer[BLOCKSIZE];
 
-	memset(fileName, 0, 256);
-	memset(buffer, 0, 256);
+	memset(fileName, 0, BLOCKSIZE);
+	memset(buffer, 0, BLOCKSIZE);
 
 	/*Get the file size */
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
 
 	/*Get the File name*/
-	read(fd, (void*)fileName, 256);
+	read(fd, (void*)fileName, BLOCKSIZE);
 	if(strncmp(fileName, "403", 3) == 0) {
 		printf("File not found~!\n");
 		return;
@@ -258,14 +258,12 @@ void getFile(int fd) {
 	printf("Transfering...");
 	while(bytesWritten < fileSize) {
 		
-		currentBytes = read(fd, (void*)buffer, 256);
+		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);
 		bytesWritten += write(newFile, (void*)buffer, currentBytes);
-		memset(buffer, 0, 256);
+		memset(buffer, 0, BLOCKSIZE);
 
 		if(bytesWritten == fileSize)
-			break;
-
-		printf(".");
+			break;		
 	}
 
 	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
