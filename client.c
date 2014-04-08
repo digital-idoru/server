@@ -278,7 +278,7 @@ void getFile(int fd) {
 void sendFile(int fd, char* filename) {
 
 	int file; //File descriptor for the file to open.
-	unsigned int fileSize; //Size of the file in bytes. 
+	unsigned int fileSize = 0; //Size of the file in bytes. 
 	unsigned char* buffer[BLOCKSIZE]; //Buffer for writting. 
 	char* fileN; 
 	int bytesWritten = 0; //Bytes written to the socket
@@ -288,7 +288,8 @@ void sendFile(int fd, char* filename) {
 
 	file = open(filename, O_RDONLY); 
 	if(file == -1) {
-		write(fd, (void*)0, sizeof(unsigned int));
+		printf("File not found, aborting the file transfer.\n");
+		write(fd, (void*)&fileSize, sizeof(unsigned int));
 		write(fd, (void*)NOFILE, strlen(NOFILE)+1);
 		return;
 	}
