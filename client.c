@@ -25,6 +25,7 @@ Client
 #define BLOCKSIZE 512
 #define WELCOMEMAX 1000
 
+#define NOTFOUND "403: File not found"
 
 #endif
 
@@ -43,6 +44,7 @@ int main(void) {
 	int sock = 0;
 	char* command; /*send commands to the server */
 	char welcomeMsg[WELCOMEMAX];
+	
 
 	/*Allocate space for the command */
 	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
@@ -84,10 +86,10 @@ int main(void) {
 			/*Begin file transfer */
 			getFile(sock);			
 
-		} else if(strncasecmp(command, "put", 3) == 0) { 
-			/*Being file send */
+		} else if(strncasecmp(command, "put", 3) == 0) { 		       
 			strtok(command, " \t");
 			sendFile(sock, strtok(NULL, "\n"));			
+		       
 		} else {			
 			readLine(sock);
 		}
@@ -286,16 +288,10 @@ void sendFile(int fd, char* filename) {
 	memset(buffer, 0, sizeof(char)*512);
 
 	file = open(filename, O_RDONLY); 
-	if(file == -1) {
-		printf("File not found.\n");
+	if(file < 0) {
+		printf("Could not open file, aborting file transfer!\n");
+		write(fd, (void*)0, sizeof(unsigned int));
 		return;
-	}
-
-	fileN = strrchr(filename, '/');
-	if(fileN != NULL) {
-		printf("204 ok to send file: %s\n", ++fileN);
-	} else {
-		printf("204 ok to send file: %s\n", filename);
 	}
 
 	/*Get the size, in bytes, of the file */
@@ -306,10 +302,11 @@ void sendFile(int fd, char* filename) {
 	write(fd, (void*)(&fileSize), sizeof(unsigned int));
 
 	/*Write the filename to the socket */
-	if(fileN != NULL) {
-		write(fd, (void*)fileN, (strlen(fileN)+1));
+	if((fileN = strrchr(filename, '/')) != NULL) { //if it's a path to the file. 
+		fileN++;
+		write(fd, (void*)fileN, strlen(fileN)+1);
 	} else {
-		write(fd, (void*)filename, (strlen(filename)+1));
+		write(fd, (void*)filename, (strlen(filename)+1)); //if it's a file in the current directory. 
 	}
 	
 	while(bytesWritten < fileSize) {

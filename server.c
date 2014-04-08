@@ -43,7 +43,7 @@ then reads payload-size bytes from the socket.
 
 #define ENDLINE "\n"
 #define NOFILE "403 No such file\n"
-
+#define BEGIN "FILESET"
 
 #endif
 
@@ -556,6 +556,12 @@ void getFile(int fd) {
 	/*Get the file size */
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
 
+	printf("Filesize recieved: %d\n", fileSize);
+	if(fileSize == 0) {
+		printf("File transfer aborted by the client!\n");
+		return;
+	}
+
 	/*Get the File name*/
 	read(fd, (void*)fileName, BLOCKSIZE);
 	if(strncmp(fileName, "403", 3) == 0) {
@@ -568,6 +574,7 @@ void getFile(int fd) {
 	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU);
 	if(newFile < 0) {
 		printf("Could not open file!\n");
+		return; 
 	}
 
 	printf("Transfering...");
