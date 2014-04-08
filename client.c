@@ -23,6 +23,7 @@ Client
 
 #define CODELENGTH 3
 #define BLOCKSIZE 512
+#define WELCOMEMAX 1000
 
 
 #endif
@@ -34,13 +35,14 @@ int connectToServer(int, struct addrinfo*);
 void communicate(int, char*);
 void readLine(int);
 void getFile(int);
+void sendFile(int, char*);
 
 int main(void) {
 
 	struct addrinfo *res;
 	int sock = 0;
 	char* command; /*send commands to the server */
-	char welcomeMsg[1000];
+	char welcomeMsg[WELCOMEMAX];
 
 	/*Allocate space for the command */
 	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
@@ -58,15 +60,15 @@ int main(void) {
 	sock = connectToServer(sock, res);
 
 	/*The server should send a greeting on connection, lets catch it and print it out */
-	read(sock, (void*)welcomeMsg, sizeof(char)*1000);
+	read(sock, (void*)welcomeMsg, sizeof(char)*WELCOMEMAX);
 	printf("%s", welcomeMsg);
 	
 	/*Interactive with the server */
 	while(true) {
 			     
-		memset(command, 0, BLOCKSIZE);
+		memset(command, 0, BLOCKSIZE); //clear the command buffer
 
-		fgets(command, BLOCKSIZE, stdin);			       
+		fgets(command, BLOCKSIZE, stdin); //read command from the server			       
 
 		if(strncasecmp(command, EXIT, strlen(EXIT)) == 0) {
 			printf("Closing connection...\n");
@@ -82,14 +84,14 @@ int main(void) {
 			/*Begin file transfer */
 			getFile(sock);			
 
-		} else {
-			
+		} else if(strncasecmp(command, "put", 3) == 0) { 
+			/*Being file send */
+			strtok(command, " \t");
+			sendFile(sock, strtok(NULL, "\n"));			
+		} else {			
 			readLine(sock);
-
 		}
 	}
-
-
 	free(command); //free the command buffer
 	return 0;
 }
@@ -268,5 +270,60 @@ void getFile(int fd) {
 
 	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
 	close(newFile);
+	return;
+}
+
+void sendFile(int fd, char* filename) {
+
+	int file; //File descriptor for the file to open.
+	unsigned int fileSize; //Size of the file in bytes. 
+	unsigned char* buffer[512]; //Buffer for writting. 
+	char* fileN; 
+	int bytesWritten = 0; //Bytes written to the socket
+	int bytesRead = 0; 
+	
+
+	memset(buffer, 0, sizeof(char)*512);
+
+	file = open(filename, O_RDONLY); 
+	if(file == -1) {
+		printf("File not found.\n");
+		return;
+	}
+
+	fileN = strrchr(filename, '/');
+	if(fileN != NULL) {
+		printf("204 ok to send file: %s\n", ++fileN);
+	} else {
+		printf("204 ok to send file: %s\n", filename);
+	}
+
+	/*Get the size, in bytes, of the file */
+	fileSize = lseek(file, 0, SEEK_END);
+	lseek(file, 0, SEEK_SET);
+	
+	/*Write the file size to the socket */
+	write(fd, (void*)(&fileSize), sizeof(unsigned int));
+
+	/*Write the filename to the socket */
+	if(fileN != NULL) {
+		write(fd, (void*)fileN, (strlen(fileN)+1));
+	} else {
+		write(fd, (void*)filename, (strlen(filename)+1));
+	}
+	
+	while(bytesWritten < fileSize) {
+
+		bytesRead = read(file, (void*)(buffer), 512);
+		bytesWritten += write(fd, (void*)(buffer), bytesRead);
+
+		if(bytesWritten == fileSize) {
+			break;
+		}
+
+		memset(buffer, 0, 512);
+	}
+	
+	close(file);
 	return;
 }

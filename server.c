@@ -39,6 +39,7 @@ then reads payload-size bytes from the socket.
 #define PORT_STRING_LEN 6
 #define PATH_SIZE 256
 #define FILENAME_SIZE 1024 
+#define BLOCKSIZE 512
 
 #define ENDLINE "\n"
 #define NOFILE "403 No such file\n"
@@ -66,6 +67,7 @@ char* getDirectoryPath(char*); //Extracts directory path from correctly formatte
 void lsCommand(int); //lists all files in the current directory. 
 void resetWorkingDirectory(char*); //Reset the directory after client exits. 
 void sendFile(int, char*); //sends a file, if it exist, to the client. 
+void getFile(int);
 
 
 /*Response messages to client commands. */
@@ -134,7 +136,7 @@ char* sanatize(char* msg) {
 //paramters are the message recieved to be checked and the length of that recieved message in bytes. 
 bool checkFullMsg(char* msg, int msgLength) {
 
-	if(memchr((void*)msg, 0xd, (size_t)msgLength) != NULL) {
+	if(memchr((void*)msg, '\n', (size_t)msgLength) != NULL) {
 		return true; 
 	} else if (memchr((void*)msg, 0, (size_t)msgLength) != NULL) {
 		return true;
@@ -280,14 +282,14 @@ void server(struct addrinfo *servinfo) {
 		memset(buffer, 0, rBuff);
 
 		do {
-			//Recieve the message from the connected client. 
+			//Recieve the message from the connected client.
 			if((recSize = recv(clientFd, buffer, rBuff, 0)) <= 0) {
 				fprintf(stderr, "Error recieving data or client has closed connection!\n");
-				exit(EXIT_FAILURE); 
+				exit(EXIT_FAILURE);
 				
 			}
 			
-			printf("Message recieved: %s\n", buffer); //debug 
+			printf("Message recieved: %s\n", buffer); //debug
 
 		}while(checkFullMsg(buffer, recSize) != true);
 
@@ -385,7 +387,6 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "get", 3) == 0) {
 
 		strtok(sBuffer, " \t");
-
 		if( (filename = strtok(NULL, " \t")) != NULL) {
 			sendFile(*clientFd, filename); 
 		} else {
@@ -393,8 +394,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		}
 
 	} else if(strncasecmp(sBuffer, "put", 3) == 0) {
-
-		/*code for put command */
+		getFile(*clientFd);
 
 	} else {
 
@@ -537,5 +537,51 @@ void sendFile(int fd, char* filename) {
 	}
 	
 	close(file);
+	return;
+}
+
+
+void getFile(int fd) {
+
+	unsigned int fileSize = 0;
+	int bytesWritten = 0; 
+	int newFile = 0; 
+	int currentBytes = 0; 
+	char fileName[BLOCKSIZE]; 
+	unsigned char buffer[BLOCKSIZE];
+
+	memset(fileName, 0, BLOCKSIZE);
+	memset(buffer, 0, BLOCKSIZE);
+
+	/*Get the file size */
+	read(fd, (void*)(&fileSize), sizeof(unsigned int));
+
+	/*Get the File name*/
+	read(fd, (void*)fileName, BLOCKSIZE);
+	if(strncmp(fileName, "403", 3) == 0) {
+		printf("File not found~!\n");
+		return;
+	}
+
+	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
+
+	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU);
+	if(newFile < 0) {
+		printf("Could not open file!\n");
+	}
+
+	printf("Transfering...");
+	while(bytesWritten < fileSize) {
+		
+		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);
+		bytesWritten += write(newFile, (void*)buffer, currentBytes);
+		memset(buffer, 0, BLOCKSIZE);
+
+		if(bytesWritten == fileSize)
+			break;		
+	}
+
+	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
+	close(newFile);
 	return;
 }
