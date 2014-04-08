@@ -288,9 +288,8 @@ void sendFile(int fd, char* filename) {
 
 	file = open(filename, O_RDONLY); 
 	if(file == -1) {
-		printf("File not found, aborting the file transfer.\n");
+		printf("File not found, aborting the file transfer.\n\n");
 		write(fd, (void*)&fileSize, sizeof(unsigned int));
-		write(fd, (void*)NOFILE, strlen(NOFILE)+1);
 		return;
 	}
 

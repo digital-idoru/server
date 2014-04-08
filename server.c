@@ -556,14 +556,13 @@ void getFile(int fd) {
 	/*Get the file size */
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
 
-	printf("Filesize recieved: %d\n", fileSize);
+	if(fileSize == 0) {
+		printf("File not found~!\n\n");
+		return;
+	}
 
 	/*Get the File name*/
 	read(fd, (void*)fileName, BLOCKSIZE);
-	if(strncmp(fileName, "403", 3) == 0) {
-		printf("File not found~!\n");
-		return;
-	}
 
 	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
 
