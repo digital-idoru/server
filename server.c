@@ -557,10 +557,6 @@ void getFile(int fd) {
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
 
 	printf("Filesize recieved: %d\n", fileSize);
-	if(fileSize == 0) {
-		printf("File transfer aborted by the client!\n");
-		return;
-	}
 
 	/*Get the File name*/
 	read(fd, (void*)fileName, BLOCKSIZE);

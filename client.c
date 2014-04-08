@@ -25,7 +25,7 @@ Client
 #define BLOCKSIZE 512
 #define WELCOMEMAX 1000
 
-#define NOTFOUND "403: File not found"
+#define NOFILE "403 No such file\n"
 
 #endif
 
@@ -279,18 +279,17 @@ void sendFile(int fd, char* filename) {
 
 	int file; //File descriptor for the file to open.
 	unsigned int fileSize; //Size of the file in bytes. 
-	unsigned char* buffer[512]; //Buffer for writting. 
+	unsigned char* buffer[BLOCKSIZE]; //Buffer for writting. 
 	char* fileN; 
 	int bytesWritten = 0; //Bytes written to the socket
 	int bytesRead = 0; 
 	
-
-	memset(buffer, 0, sizeof(char)*512);
+	memset(buffer, 0, sizeof(char)*BLOCKSIZE);
 
 	file = open(filename, O_RDONLY); 
-	if(file < 0) {
-		printf("Could not open file, aborting file transfer!\n");
+	if(file == -1) {
 		write(fd, (void*)0, sizeof(unsigned int));
+		write(fd, (void*)NOFILE, strlen(NOFILE)+1);
 		return;
 	}
 
