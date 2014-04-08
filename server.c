@@ -556,6 +556,7 @@ void getFile(int fd) {
 	/*Get the file size */
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
 
+	 //Protocal. If filesize is 0, then the file could not be opened on the client end. 
 	if(fileSize == 0) {
 		printf("File not found~!\n\n");
 		return;
