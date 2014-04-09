@@ -1,27 +1,23 @@
-#Very general purpose makefile that I created for projects. 
-#Compiles and links using the flags defined in CFLAGS 
-#For different projects on only has to edit the FILES and EXEC variables 
-#You'll have to add the other dependencies yourself too, if you so need to. 
+#Daniel S. Hono
+#CSI416 - Client/Serve Project II Makefile 
 
 #MACROS
 CC=gcc
-CFLAGS= -Wall -g
+CFLAGS=  -pedantic -Wall -g
 FILESS = server.o
 FILESC = client.o
 EXECS = server
 EXECC = client
-CLEAN= *.o *.c~ core makefile~
+CLEAN= *.o *.c~ core makefile~ *.md~
 
-#Tells make what filetypes to expect 
+
 .SUFFIXES: .c .o
 
-#No dependencies. Tells make how to get a .o file from a .c file. 
-# $< means that if the target is, for example, main.o, then look for main.c 
 .c.o:
 	$(CC) $(CFLAGS) -c $< 
 
 #Default target
-all: server client
+all: server client clean
 
 #Server
 server: $(FILESS)
@@ -33,4 +29,4 @@ client: $(FILESC)
 
 #Remove unwanted files. 
 clean: 
-	rm -i $(CLEAN)
+	rm -f $(CLEAN)
