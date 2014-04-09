@@ -351,7 +351,6 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		/*get the path from the client*/
 		memset(fileURL, 0, sizeof(char)*PATH_SIZE); 
 		read(*clientFd, fileURL, PATH_SIZE);
-		fileURL[strlen(fileURL)] = '\0';
 		printf("The path being changed to is: %s", fileURL+7);
 		printf("The path being changed to is: %s", fileURL);
 
