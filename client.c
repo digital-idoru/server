@@ -1,6 +1,7 @@
 /******************************
 Daniel S. Hono II
-Client 
+Client
+CSI416 
 *******************************/
 
 #include <stdio.h>
@@ -24,6 +25,9 @@ Client
 #define CODELENGTH 3
 #define BLOCKSIZE 512
 #define WELCOMEMAX 1000
+#define FILECMDLEN 3
+#define ERRCODELEN 3
+#define FILEFAILURE -1
 
 #define NOFILE "403 No such file\n"
 
@@ -65,31 +69,32 @@ int main(void) {
 	read(sock, (void*)welcomeMsg, sizeof(char)*WELCOMEMAX);
 	printf("%s", welcomeMsg);
 	
-	/*Interactive with the server */
+	/*Interact with the server */
 	while(true) {
 			     
-		memset(command, 0, BLOCKSIZE); //clear the command buffer
+		/*Clear the command buffer of junk*/
+		memset(command, 0, BLOCKSIZE);
 
-		fgets(command, BLOCKSIZE, stdin); //read command from the server			       
+		/*Read command from the user*/
+		fgets(command, BLOCKSIZE, stdin); 
 
+		/*Check if the user has entered the exit command*/
 		if(strncasecmp(command, EXIT, strlen(EXIT)) == 0) {
 			printf("Closing connection...\n");
 			close(sock); 
-			printf("Connection closed. \n");
+			printf("Connection closed.\n");
 			break;			
 		}
 
 		/*Send the message to the server */
 		communicate(sock, command); 
 
-		if(strncasecmp(command, "get", 3) == 0) {			
-			/*Begin file transfer */
+		/*Handle the commands and responses*/
+		if(strncasecmp(command, "get", FILECMDLEN) == 0) {			
 			getFile(sock);			
-
-		} else if(strncasecmp(command, "put", 3) == 0) { 		       
+		} else if(strncasecmp(command, "put", FILECMDLEN) == 0) { 		       
 			strtok(command, " \t");
-			sendFile(sock, strtok(NULL, "\n"));			
-		       
+			sendFile(sock, strtok(NULL, "\n"));					       
 		} else {			
 			readLine(sock);
 		}
@@ -118,12 +123,16 @@ void setAddressInfo(struct addrinfo **resultList) {
 }
 
 /*Returns a socket file descriptor to be used in the network communication */
+/*Parameter info: addrinfo structure to be used in setting up the socket details */
 int setSocket(struct addrinfo* info) {
 
 	return socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 }
 
 /*Connect to the server */ 
+/*Parameter socketFileDescriptor: file descriptor to be used for the socket*/
+/*Parameter info: addrinfo structure linked listused in setting up the connection*/
+/*Return: socket file descriptor to a legitmate connection with the server*/
 int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 
 
@@ -156,15 +165,16 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 		printf("connect complete!\n"); 
 	}
 
-	freeaddrinfo(info); //free the results linked list when we're done 
-	return socketFileDescriptor; 
+	freeaddrinfo(info); //free the results linked list when we're done.
+	return socketFileDescriptor; //return the connected socket file descriptor. 
 }
 
 /*communicate with the server while the connection is up */
+/*Parameter socket: open file descriptor of a socket connected to the server*/
+/*Parameter command: Command to send to the server*/
 void communicate(int socket, char* command) {
 
 	int msgLength = strlen(command)+1;
-
        	if(send(socket, (void*)command, msgLength, 0) != msgLength) {
 		printf("Error sending message.\n");
 	}
@@ -182,6 +192,7 @@ void readLine(int fd) {
 	unsigned int msgBytes = 0; //Size of the message in bytes. 
 	int currentSize = BLOCKSIZE; //start off response buffer as blocksize bytes in length. 
 
+	/*Allocate space for the buffers */
 	intermediate = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(intermediate == NULL) {
 		fprintf(stderr, "Could not allocate heap space!\n");
@@ -194,6 +205,7 @@ void readLine(int fd) {
 		exit(EXIT_FAILURE);
 	}
 
+	/*Clear the buffers of any junk data.*/
 	memset(intermediate, 0, sizeof(char)*BLOCKSIZE);
 	memset(response, 0, sizeof(char)*BLOCKSIZE);
 
@@ -204,6 +216,7 @@ void readLine(int fd) {
 	/*Read the data from the socket*/
 	while(totalBytes < msgBytes) {      		       
 
+		/*read BLOCKSIZE bytes from the socket into the intermediate buffer*/
 		currentBytes = read(fd, (void*)intermediate, BLOCKSIZE);
 
 		/*Copy the bytes in intermediate to response+totalBytes, i.e to the end of the array */
@@ -226,6 +239,7 @@ void readLine(int fd) {
 		}	      		
 	}
 
+	/*Print the response from the server in its entirety.*/
 	printf("%s\n", response);
 	
 	/*Free the buffers */
@@ -254,7 +268,7 @@ void getFile(int fd) {
 
 	/*Get the File name*/
 	read(fd, (void*)fileName, BLOCKSIZE);
-	if(strncmp(fileName, "403", 3) == 0) { //If the filename written by the server is "403: File not Found", then we return to main. 
+	if(strncmp(fileName, "403", ERRCODELEN) == 0) { //If the filename written by the server is "403: File not Found", then we return to main. 
 		printf("File not found~!\n");
 		return;
 	}
@@ -297,9 +311,9 @@ void sendFile(int fd, char* filename) {
 
 	/*Open file for reading. If it doesn't exist, send the failure protocal to the server*/
 	file = open(filename, O_RDONLY); 
-	if(file == -1) {
+	if(file == FILEFAILURE) {
 		printf("File not found, aborting the file transfer.\n\n"); //Display error message to the client. 
-		write(fd, (void*)&fileSize, sizeof(unsigned int)); //Write a filesize of 0 to the server*/
+		write(fd, (void*)&fileSize, sizeof(unsigned int)); //Write a filesize of 0 to the server
 		return;
 	}
 
@@ -321,6 +335,7 @@ void sendFile(int fd, char* filename) {
 	/*Write until the total number of bytes in the file being sent is written to the socket */
 	while(bytesWritten < fileSize) {
 
+		/*Read the data from the file and write it to the socket for the server to read.*/
 		bytesRead = read(file, (void*)(buffer), BLOCKSIZE);
 		bytesWritten += write(fd, (void*)(buffer), bytesRead);
 
@@ -329,7 +344,8 @@ void sendFile(int fd, char* filename) {
 			break;
 		}
 
-		memset(buffer, 0, 512);
+		/*Clear the buffer of data after we don't need it anymore*/
+		memset(buffer, 0, BLOCKSIZE);
 	}
 	
 	close(file);
