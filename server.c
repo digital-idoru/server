@@ -351,9 +351,9 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 
 		/*get the path from the client*/
 		memset(fileURL, 0, sizeof(char)*PATH_SIZE); 
-		read(*clientFd, fileURL, PATH_SIZE);
+		read(*clientFd, (void*)fileURL, PATH_SIZE);
 
-		fileUrlPurge = (char*)malloc(sizeof(char)*1000); 
+		fileUrlPurge = (char*)malloc(sizeof(char)*1000);
 		memset(fileUrlPurge, 0, sizeof(char)*1000);
 		strcpy(fileUrlPurge, fileURL+7);
 		printf("%s", fileUrlPurge);
