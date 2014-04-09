@@ -16,24 +16,26 @@ CSI416
 #ifndef DEFINES
 #define DEFINES
 
+/* Basic booleans*/
 #define true 1
 #define false 1 
 
 #define PORT "40000" //Server listens on port 40000
-#define EXIT "EXIT"
+#define EXIT "EXIT" //Exit command from the user, used for pattern matching. 
 
-#define CODELENGTH 3
-#define BLOCKSIZE 512
-#define WELCOMEMAX 1000
-#define FILECMDLEN 3
-#define ERRCODELEN 3
-#define FILEFAILURE -1
+//#define CODELENGTH 3 
+#define BLOCKSIZE 512 //for reading and writting files in blocks of size 512 bytes
+#define WELCOMEMAX 1000 //Maximum size allowed for the welcome message from the server upon connection. 
+#define FILECMDLEN 3 //For pattern matching on get and put commands. 
+#define ERRCODELEN 3 //For pattern matching error codes from the server on file transfers 
+#define FILEFAILURE -1 //open() returns -1 on failure. 
 
-#define NOFILE "403 No such file\n"
+#define NOFILE "403 No such file\n" //File open error to send to the server. 
+#define QUIT "QUIT" //Quit message to send to the server on client exit. 
 
 #endif
 
-/*function prototypes */
+/*Function prototypes */
 void setAddressInfo(struct addrinfo**);
 int setSocket(struct addrinfo*);
 int connectToServer(int, struct addrinfo*);
@@ -44,10 +46,10 @@ void sendFile(int, char*);
 
 int main(void) {
 
-	struct addrinfo *res;
-	int sock = 0;
-	char* command; /*send commands to the server */
-	char welcomeMsg[WELCOMEMAX];
+	struct addrinfo *res; //for the connection description and hints. 
+	int sock = 0; //for the socket file descriptor
+	char* command; //Send commands to the server
+	char welcomeMsg[WELCOMEMAX]; //Buffer to hold the welcome message. 
 	
 
 	/*Allocate space for the command */
@@ -81,9 +83,11 @@ int main(void) {
 		/*Check if the user has entered the exit command*/
 		if(strncasecmp(command, EXIT, strlen(EXIT)) == 0) {
 			printf("Closing connection...\n");
-			close(sock); 
+			write(sock, (void*)QUIT, sizeof QUIT);  
+			readLine(sock);
 			printf("Connection closed.\n");
-			break;			
+			close(sock);
+			return 0;		
 		}
 
 		/*Send the message to the server */
@@ -91,10 +95,10 @@ int main(void) {
 
 		/*Handle the commands and responses*/
 		if(strncasecmp(command, "get", FILECMDLEN) == 0) {			
-			getFile(sock);			
+			getFile(sock); //read file from the socket		
 		} else if(strncasecmp(command, "put", FILECMDLEN) == 0) { 		       
 			strtok(command, " \t");
-			sendFile(sock, strtok(NULL, "\n"));					       
+			sendFile(sock, strtok(NULL, "\n")); //send file to server. 				       
 		} else {			
 			readLine(sock);
 		}
@@ -107,7 +111,7 @@ int main(void) {
 void setAddressInfo(struct addrinfo **resultList) {
 
 	struct addrinfo hints; //hints structure 
-	int status; 
+	int status; //Used for error checking on getaddrinfo return type. 
 
 	memset(&hints, 0, sizeof hints);
 
@@ -174,7 +178,7 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 /*Parameter command: Command to send to the server*/
 void communicate(int socket, char* command) {
 
-	int msgLength = strlen(command)+1;
+	int msgLength = strlen(command)+1; //+1 for null terminator 
        	if(send(socket, (void*)command, msgLength, 0) != msgLength) {
 		printf("Error sending message.\n");
 	}

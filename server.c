@@ -29,17 +29,18 @@ then reads payload-size bytes from the socket.
 #ifndef DEFINES
 #define DEFINES
 
+/*Standard booleans*/
 #define true 1
 #define false 0
 
 #define PORT_PARAM 1
-#define BACKLOG 10
-#define BUFSIZE 250 
-#define PORT 40000
-#define PORT_STRING_LEN 6
-#define PATH_SIZE 256
-#define FILENAME_SIZE 1024 
-#define BLOCKSIZE 512
+#define BACKLOG 10 //backlog for connections 
+#define BUFSIZE 250 //a buffer. 
+#define PORT 40000 //Server listens on port 40000
+#define PORT_STRING_LEN 6 //size of the port string used in some function calls. 
+#define PATH_SIZE 256 //maximum path size for files
+#define FILENAME_SIZE 1024 //maximum file name size in bytes
+#define BLOCKSIZE 512 //read and write files in 512 bytes. 
 
 #define ENDLINE "\n"
 #define NOFILE "403 No such file\n"
@@ -66,13 +67,13 @@ void commands(char*, int*, bool*); //handles the commands from the client
 char* getDirectoryPath(char*); //Extracts directory path from correctly formatted command
 void lsCommand(int); //lists all files in the current directory. 
 void resetWorkingDirectory(char*); //Reset the directory after client exits. 
-void sendFile(int, char*); //sends a file, if it exist, to the client. 
-void getFile(int);
+void sendFile(int, char*); //Sends a file, if it exist, to the client. Get command.  
+void getFile(int); //Read a file from the client for the put command. 
 
 
 /*Response messages to client commands. */
-char* welcome_msg = "\n\n~La Vie Est Drole~\n\n";
-char* helo = "220 Connection Established.\n\n";
+char* welcome_msg = "\n\n~La Vie Est Drole~\n\n"; //HARIME. NUI. 
+char* helo = "220 Connection Established.\n\n"; 
 char* goodbye = "100 Don't go away mad, just go away.\n\n";
 char* unrec = "401 Unrecognized Input.\n\n"; 
 char* nHelo = "550 You must give the HELO command.\n\n";
@@ -145,6 +146,7 @@ bool checkFullMsg(char* msg, int msgLength) {
 	}
 }
 
+/*Function to set addressinfo with some standard parameters*/
 void setAddressInfoStandard(const char* port, struct addrinfo hints, struct addrinfo** results) {
 
 	int status; //Status for the call to getAddrInfo().
@@ -319,6 +321,7 @@ void server(struct addrinfo *servinfo) {
 	return;
 }
 
+/*Process the commands from the client*/
 void commands(char* sBuffer, int* clientFd, bool *ack) {
 
   
@@ -333,11 +336,9 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 
 		/*Close the connection */
 		msgSend(*clientFd, goodbye, (strlen(goodbye)+1)); 
-
 		close(*clientFd); 
 		*clientFd = 0; 
 		*ack  = false; 
-
 		return;
 
 	} else if(strncasecmp(sBuffer, "helo", 4) == 0) {		
