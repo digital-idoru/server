@@ -26,7 +26,7 @@ CSI416 Project 2
 #define EXIT "EXIT" //Exit command from the user, used for pattern matching. 
 #define QUIT "QUIT" //Quit message to send to the server on client exit. 
 #define ENDLINE "\n" //End of line. 
-#define CD "cd" //For sending cd command to the server with file urls. 
+
 
 //#define CODELENGTH 3 
 #define BLOCKSIZE 512 //for reading and writting files in blocks of size 512 bytes
@@ -56,7 +56,7 @@ int main(void) {
 	char* command; //Send commands to the server
 	char* tmp; //Pointer to file url string returned by the setFileURL function 
 	char welcomeMsg[WELCOMEMAX]; //Buffer to hold the welcome message. 
-	
+	char* cd = "cd"; 
 
 	/*Allocate space for the command */
 	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
@@ -98,7 +98,7 @@ int main(void) {
 
 		/*Send the message to the server */	
 		if(strncasecmp(command, "cd", DIRCMDLEN) == 0) {
-			communicate(sock, CD); 
+			communicate(sock, cd); 
 			tmp = setFileURL(command);
 			communicate(sock, tmp);
 			free(tmp);
@@ -207,6 +207,8 @@ char* setFileURL(char* filepath) {
 	if(filepathURI == NULL) {
 		fprintf(stderr, "Could not allocate heap space, shutting down.\n"); exit(EXIT_FAILURE);
 	}
+
+	memset(filepathURI, 0, sizeof(char)*(strlen(pathToken) + sizeof FILEURL + 2));
 
 	/*Build the file url string up */
 	strncat(filepathURI, FILEURL, sizeof FILEURL);

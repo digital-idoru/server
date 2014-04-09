@@ -349,9 +349,11 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
 
 		/*get the path from the client*/
+		memset(fileURL, 0, sizeof(char)*PATH_SIZE); 
 		read(*clientFd, fileURL, PATH_SIZE);
 		fileURL[strlen(fileURL)] = '\0';
 		printf("The path being changed to is: %s", fileURL+7);
+		printf("The path being changed to is: %s", fileURL);
 
 		if(chdir(fileURL+7) == 0) {
 
