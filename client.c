@@ -1,7 +1,7 @@
 /******************************
 Daniel S. Hono II
 Client
-CSI416 
+CSI416 Project 2
 *******************************/
 
 #include <stdio.h>
@@ -21,17 +21,21 @@ CSI416
 #define false 1 
 
 #define PORT "40000" //Server listens on port 40000
+#define NOFILE "403 No such file\n" //File open error to send to the server. 
+#define FILEURL "file://" //File url. 
 #define EXIT "EXIT" //Exit command from the user, used for pattern matching. 
+#define QUIT "QUIT" //Quit message to send to the server on client exit. 
+#define ENDLINE "\n" //End of line. 
+#define CD "cd" //For sending cd command to the server with file urls. 
 
 //#define CODELENGTH 3 
 #define BLOCKSIZE 512 //for reading and writting files in blocks of size 512 bytes
 #define WELCOMEMAX 1000 //Maximum size allowed for the welcome message from the server upon connection. 
 #define FILECMDLEN 3 //For pattern matching on get and put commands. 
+#define DIRCMDLEN 2 //For pattern matching on cd command. 
 #define ERRCODELEN 3 //For pattern matching error codes from the server on file transfers 
 #define FILEFAILURE -1 //open() returns -1 on failure. 
 
-#define NOFILE "403 No such file\n" //File open error to send to the server. 
-#define QUIT "QUIT" //Quit message to send to the server on client exit. 
 
 #endif
 
@@ -43,12 +47,14 @@ void communicate(int, char*);
 void readLine(int);
 void getFile(int);
 void sendFile(int, char*);
+char* setFileURL(char*); 
 
 int main(void) {
 
 	struct addrinfo *res; //for the connection description and hints. 
 	int sock = 0; //for the socket file descriptor
 	char* command; //Send commands to the server
+	char* tmp; //Pointer to file url string returned by the setFileURL function 
 	char welcomeMsg[WELCOMEMAX]; //Buffer to hold the welcome message. 
 	
 
@@ -85,21 +91,27 @@ int main(void) {
 			printf("Closing connection...\n");
 			write(sock, (void*)QUIT, sizeof QUIT);  
 			readLine(sock);
-			printf("Connection closed.\n");
-			close(sock);
+			printf("Connection closed.\n");	
+			free(command);
 			return 0;		
 		}
 
-		/*Send the message to the server */
-		communicate(sock, command); 
-
-		/*Handle the commands and responses*/
-		if(strncasecmp(command, "get", FILECMDLEN) == 0) {			
+		/*Send the message to the server */	
+		if(strncasecmp(command, "cd", DIRCMDLEN) == 0) {
+			communicate(sock, CD); 
+			tmp = setFileURL(command);
+			communicate(sock, tmp);
+			free(tmp);
+			readLine(sock);
+		}else if(strncasecmp(command, "get", FILECMDLEN) == 0) {
+			communicate(sock, command);
 			getFile(sock); //read file from the socket		
-		} else if(strncasecmp(command, "put", FILECMDLEN) == 0) { 		       
+		} else if(strncasecmp(command, "put", FILECMDLEN) == 0) { 
+			communicate(sock, command);
 			strtok(command, " \t");
 			sendFile(sock, strtok(NULL, "\n")); //send file to server. 				       
-		} else {			
+		} else {
+			communicate(sock, command);
 			readLine(sock);
 		}
 	}
@@ -172,6 +184,40 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 	freeaddrinfo(info); //free the results linked list when we're done.
 	return socketFileDescriptor; //return the connected socket file descriptor. 
 }
+
+
+/*Function that takes a user-friendly standard file path and creates a file URL to send to the server */
+/*Parameters filepath: User friendly file path that needs to be converted to the file url scheme */
+char* setFileURL(char* filepath) {
+
+	char* filepathURI = NULL; //Pointer to the completed file url string. 
+	char* pathToken = NULL; //Pointer to the path token in the user's command. 
+
+	/*Get the path from the command */
+	strtok(filepath, " "); 
+	pathToken = strtok(NULL, "\n"); 
+	if(pathToken == NULL) {
+		printf("Invalid path");
+		return NULL;
+	}
+	printf("The path you entered hopefully is:%s\n", pathToken); //debug 
+	
+	/*Allocate space for a new complete file URL string */
+	filepathURI = (char*)malloc(sizeof(char)*(strlen(pathToken) + sizeof FILEURL + 2));
+	if(filepathURI == NULL) {
+		fprintf(stderr, "Could not allocate heap space, shutting down.\n"); exit(EXIT_FAILURE);
+	}
+
+	/*Build the file url string up */
+	strncat(filepathURI, FILEURL, sizeof FILEURL);
+	strncat(filepathURI, pathToken, strlen(pathToken));
+	strncat(filepathURI, ENDLINE, sizeof ENDLINE);  
+	printf("The complete file url is:%s", filepathURI); //debug
+
+	/*Return it*/ 
+	return filepathURI;
+}
+
 
 /*communicate with the server while the connection is up */
 /*Parameter socket: open file descriptor of a socket connected to the server*/

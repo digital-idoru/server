@@ -1,7 +1,7 @@
 /************************************
-Daniel Hono II
+Daniel S. Hono II
+Server
 CSI416 Project 2
-A Simple Server
 *************************************/
 
 /*************************************
@@ -10,8 +10,6 @@ payload size (in bytes) followed by that many bytes.
 These are SEPERATE write calls. The client first reads the payload size,
 then reads payload-size bytes from the socket.
 *************************************/
-
-
 
 #include <sys/types.h>
 #include <unistd.h>
@@ -69,10 +67,11 @@ void lsCommand(int); //lists all files in the current directory.
 void resetWorkingDirectory(char*); //Reset the directory after client exits. 
 void sendFile(int, char*); //Sends a file, if it exist, to the client. Get command.  
 void getFile(int); //Read a file from the client for the put command. 
+char* stripFileURL(char*); //Remove file:// from the beginning of a directory path. 
 
 
 /*Response messages to client commands. */
-char* welcome_msg = "\n\n~La Vie Est Drole~\n\n"; //HARIME. NUI. 
+char* welcome_msg = "\n\n~La Vie Est Drole~\n\n"; 
 char* helo = "220 Connection Established.\n\n"; 
 char* goodbye = "100 Don't go away mad, just go away.\n\n";
 char* unrec = "401 Unrecognized Input.\n\n"; 
@@ -291,11 +290,11 @@ void server(struct addrinfo *servinfo) {
 				
 			}
 			
-			printf("Message recieved: %s\n", buffer); //debug
+			//printf("Message recieved: %s\n", buffer); //debug
 
 		}while(checkFullMsg(buffer, recSize) != true);
 
-		printf("Processing msg\n"); //debug 
+		//printf("Processing msg\n"); //debug 
 
 		//Need to remove the special characters appended to the string by the telnet. 
 		sBuffer = sanatize(buffer); 
@@ -312,7 +311,7 @@ void server(struct addrinfo *servinfo) {
 
 		} else if(ack != true){
 			len = strlen(nHelo)+1;
-			printf("sending message\n"); //debug 
+			//printf("sending message\n"); //debug 
 			msgSend(clientFd, nHelo, len);
 		}
 
@@ -325,7 +324,8 @@ void server(struct addrinfo *servinfo) {
 void commands(char* sBuffer, int* clientFd, bool *ack) {
 
   
-	char cwd[PATH_SIZE], fullPath[PATH_SIZE+512]; 
+	char cwd[PATH_SIZE], fullPath[PATH_SIZE+512];
+	char fileURL[PATH_SIZE]; 
 	unsigned int msgBytes = 0;
 	char* filename; 
 
@@ -348,7 +348,12 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
 
-		if(chdir(getDirectoryPath(sBuffer)) == 0) {
+		/*get the path from the client*/
+		read(*clientFd, fileURL, PATH_SIZE);
+		fileURL[strlen(fileURL)] = '\0';
+		printf("The path being changed to is: %s", fileURL+7);
+
+		if(chdir(fileURL+7) == 0) {
 
 			msgBytes = strlen(dirCh)+1;
 			msgSend(*clientFd, dirCh, msgBytes);
@@ -498,16 +503,19 @@ void resetWorkingDirectory(char* origin) {
 
 	return ;
 }
-       
+
+/*Function to send a file to the client*/
+/*Parameter fd: File descriptor of open socket with the client */
+/*parameter filename: File to be opened by the server */
 void sendFile(int fd, char* filename) {
 
 	int file; //File descriptor for the file to open.
 	unsigned int fileSize; //Size of the file in bytes. 
-	unsigned char* buffer[512]; //Buffer for writting. 
+	unsigned char* buffer[BLOCKSIZE]; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
 	int bytesRead = 0; 
 
-	memset(buffer, 0, sizeof(char)*512);
+	memset(buffer, 0, sizeof(char)*BLOCKSIZE);
 
 	file = open(filename, O_RDONLY); 
 	if(file == -1) {
@@ -525,23 +533,25 @@ void sendFile(int fd, char* filename) {
 	/*Write the filename to the socket */
 	write(fd, (void*)filename, (strlen(filename)+1));
 	
+	/*Write the file's bytes to the socket*/
 	while(bytesWritten < fileSize) {
 
-		bytesRead = read(file, (void*)(buffer), 512);
+		bytesRead = read(file, (void*)(buffer), BLOCKSIZE);
 		bytesWritten += write(fd, (void*)(buffer), bytesRead);
 
 		if(bytesWritten == fileSize) {
 			break;
 		}
 
-		memset(buffer, 0, 512);
+		memset(buffer, 0, BLOCKSIZE);
 	}
 	
 	close(file);
 	return;
 }
 
-
+/*Function to read a file from the client*/
+/*Paramter fd: File descriptor of active socket with the client */
 void getFile(int fd) {
 
 	unsigned int fileSize = 0;
@@ -588,4 +598,13 @@ void getFile(int fd) {
 	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
 	close(newFile);
 	return;
+}
+
+char* stripFileURL(char* lPath) {
+
+
+
+
+
+	return NULL;
 }
