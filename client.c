@@ -54,9 +54,8 @@ int main(void) {
 	struct addrinfo *res; //for the connection description and hints. 
 	int sock = 0; //for the socket file descriptor
 	char* command; //Send commands to the server
-	char* tmp; //Pointer to file url string returned by the setFileURL function 
 	char welcomeMsg[WELCOMEMAX]; //Buffer to hold the welcome message. 
-	char* cd = "cd"; 
+
 
 	/*Allocate space for the command */
 	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
@@ -98,10 +97,10 @@ int main(void) {
 
 		/*Send the message to the server */	
 		if(strncasecmp(command, "cd", DIRCMDLEN) == 0) {
-			communicate(sock, cd); 
-			tmp = setFileURL(command);
-			communicate(sock, tmp);
-			free(tmp);
+			//communicate(sock, cd); 
+			//tmp = setFileURL(command);
+			communicate(sock, command);
+			//free(tmp);
 			readLine(sock);
 		}else if(strncasecmp(command, "get", FILECMDLEN) == 0) {
 			communicate(sock, command);
@@ -213,7 +212,7 @@ char* setFileURL(char* filepath) {
 	/*Build the file url string up */
 	strncat(filepathURI, FILEURL, sizeof FILEURL);
 	strncat(filepathURI, pathToken, strlen(pathToken));
-	strncat(filepathURI, ENDLINE, sizeof ENDLINE);  
+	//strncat(filepathURI, ENDLINE, sizeof ENDLINE);  
 	printf("The complete file url is:%s", filepathURI); //debug
 
 	/*Return it*/ 

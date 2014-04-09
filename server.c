@@ -325,10 +325,9 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 
   
 	char cwd[PATH_SIZE], fullPath[PATH_SIZE+512];
-	char fileURL[PATH_SIZE]; 
 	unsigned int msgBytes = 0;
 	char* filename; 
-	char* fileUrlPurge; 
+
 
 	memset(cwd, 0, sizeof(char)*PATH_SIZE);
 	memset(fullPath, 0, sizeof(char)*PATH_SIZE+512);
@@ -348,17 +347,8 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		msgSend(*clientFd, rHELO, 0);
 
 	} else if(strncasecmp(sBuffer, "cd", 2) == 0) {
-
-		/*get the path from the client*/
-		memset(fileURL, 0, sizeof(char)*PATH_SIZE); 
-		read(*clientFd, (void*)fileURL, PATH_SIZE);
-
-		fileUrlPurge = (char*)malloc(sizeof(char)*1000);
-		memset(fileUrlPurge, 0, sizeof(char)*1000);
-		strcpy(fileUrlPurge, fileURL+7);
-		printf("%s", fileUrlPurge);
-
-		if(chdir(fileUrlPurge) == 0) {
+ 
+		if(chdir(getDirectoryPath(sBuffer)) == 0) {
 
 			msgBytes = strlen(dirCh)+1;
 			msgSend(*clientFd, dirCh, msgBytes);
@@ -417,14 +407,15 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	return ;
 }
 
+/*Tokenize the recieved string from the client to extract the path*/
+/*Parameters buffer: string recieved from the client containing the path */
 char* getDirectoryPath(char* buffer) {
 
 	char* dir;
-
+	      
 	strtok(buffer, " ");
 	dir = strtok(NULL, " ");
-
-	return dir;
+	return dir; 
 }
 
 /*Function to handle the ls command from the client */
@@ -603,13 +594,4 @@ void getFile(int fd) {
 	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
 	close(newFile);
 	return;
-}
-
-char* stripFileURL(char* lPath) {
-
-
-
-
-
-	return NULL;
 }
