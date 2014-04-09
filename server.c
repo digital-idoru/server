@@ -328,6 +328,7 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 	char fileURL[PATH_SIZE]; 
 	unsigned int msgBytes = 0;
 	char* filename; 
+	char* fileUrlPurge; 
 
 	memset(cwd, 0, sizeof(char)*PATH_SIZE);
 	memset(fullPath, 0, sizeof(char)*PATH_SIZE+512);
@@ -351,10 +352,13 @@ void commands(char* sBuffer, int* clientFd, bool *ack) {
 		/*get the path from the client*/
 		memset(fileURL, 0, sizeof(char)*PATH_SIZE); 
 		read(*clientFd, fileURL, PATH_SIZE);
-		printf("The path being changed to is: %s", fileURL+7);
-		printf("The path being changed to is: %s", fileURL);
 
-		if(chdir(fileURL+7) == 0) {
+		fileUrlPurge = (char*)malloc(sizeof(char)*1000); 
+		memset(fileUrlPurge, 0, sizeof(char)*1000);
+		strcpy(fileUrlPurge, fileURL+7);
+		printf("%s", fileUrlPurge);
+
+		if(chdir(fileUrlPurge) == 0) {
 
 			msgBytes = strlen(dirCh)+1;
 			msgSend(*clientFd, dirCh, msgBytes);
