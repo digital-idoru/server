@@ -173,13 +173,14 @@ void communicate(int socket, char* command) {
 }
 
 /*Read from the file specified by fd until there is no data left in it to be read */
+/*Expands a buffer to read text messages from the server, which sometimes can be large due to the ls command */
 void readLine(int fd) {
 
-	int currentBytes = 0, totalBytes = 0; 
-	char* intermediate = NULL;
-	char* response = NULL; 
-	unsigned int msgBytes = 0;
-	int currentSize = BLOCKSIZE; 
+	int currentBytes = 0, totalBytes = 0; //current bytes read from the server, totalbytes read from the server.  
+	char* intermediate = NULL; //Buffer to read from the socket. 
+	char* response = NULL; //Expanding buffer to hold text response from the server. 
+	unsigned int msgBytes = 0; //Size of the message in bytes. 
+	int currentSize = BLOCKSIZE; //start off response buffer as blocksize bytes in length. 
 
 	intermediate = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(intermediate == NULL) {
@@ -233,15 +234,18 @@ void readLine(int fd) {
 	return;
 }
 
+/* Function to recieve a file from the server after a get command has been issued */
+/* Parameter fd: File descriptor of open socket connection to the server */
 void getFile(int fd) {
 
-	unsigned int fileSize = 0;
-	int bytesWritten = 0; 
-	int newFile = 0; 
-	int currentBytes = 0; 
-	char fileName[BLOCKSIZE]; 
-	unsigned char buffer[BLOCKSIZE];
+	unsigned int fileSize = 0; //Size of the file being read. 
+	int bytesWritten = 0;  //Number of bytes written to the newly created local file. 
+	int newFile = 0; //file descriptor for the newly created local file. 
+	int currentBytes = 0; //Current # of bytes read from the socket. 
+	char fileName[BLOCKSIZE]; //Name of the file sent from the server. 
+	unsigned char buffer[BLOCKSIZE]; //buffer to hold blocks of data written to the socket from the server. 
 
+	/*Clear the buffers */
 	memset(fileName, 0, BLOCKSIZE);
 	memset(buffer, 0, BLOCKSIZE);
 
@@ -250,16 +254,17 @@ void getFile(int fd) {
 
 	/*Get the File name*/
 	read(fd, (void*)fileName, BLOCKSIZE);
-	if(strncmp(fileName, "403", 3) == 0) {
+	if(strncmp(fileName, "403", 3) == 0) { //If the filename written by the server is "403: File not Found", then we return to main. 
 		printf("File not found~!\n");
 		return;
 	}
 
-	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
+	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize); //friendly message. 
 
-	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU);
-
+	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU); //Open a new file to write to. 
 	printf("Transfering...");
+
+	/*Read the bytes from the socket, and write them to the newly created file*/
 	while(bytesWritten < fileSize) {
 		
 		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);
@@ -275,21 +280,26 @@ void getFile(int fd) {
 	return;
 }
 
+/*Function to send a file to the server after the issueing of a put command*/
+/*Parameters: fd: File descriptor of the open socket with the server */
+/*Parameters: filename, either a full user-friendly path to a file, or a file in the current directory*/
 void sendFile(int fd, char* filename) {
 
 	int file; //File descriptor for the file to open.
 	unsigned int fileSize = 0; //Size of the file in bytes. 
 	unsigned char* buffer[BLOCKSIZE]; //Buffer for writting. 
-	char* fileN; 
+	char* fileN; //Pointer to a tokenized filename if needed 
 	int bytesWritten = 0; //Bytes written to the socket
-	int bytesRead = 0; 
+	int bytesRead = 0; //Bytes read from the file being sent. 
 	
+	/*Clear the buffer */
 	memset(buffer, 0, sizeof(char)*BLOCKSIZE);
 
+	/*Open file for reading. If it doesn't exist, send the failure protocal to the server*/
 	file = open(filename, O_RDONLY); 
 	if(file == -1) {
-		printf("File not found, aborting the file transfer.\n\n");
-		write(fd, (void*)&fileSize, sizeof(unsigned int));
+		printf("File not found, aborting the file transfer.\n\n"); //Display error message to the client. 
+		write(fd, (void*)&fileSize, sizeof(unsigned int)); //Write a filesize of 0 to the server*/
 		return;
 	}
 
@@ -301,18 +311,20 @@ void sendFile(int fd, char* filename) {
 	write(fd, (void*)(&fileSize), sizeof(unsigned int));
 
 	/*Write the filename to the socket */
-	if((fileN = strrchr(filename, '/')) != NULL) { //if it's a path to the file. 
+	if((fileN = strrchr(filename, '/')) != NULL) { //if it's a full user-friendly path to the file. 
 		fileN++;
 		write(fd, (void*)fileN, strlen(fileN)+1);
 	} else {
 		write(fd, (void*)filename, (strlen(filename)+1)); //if it's a file in the current directory. 
 	}
 	
+	/*Write until the total number of bytes in the file being sent is written to the socket */
 	while(bytesWritten < fileSize) {
 
-		bytesRead = read(file, (void*)(buffer), 512);
+		bytesRead = read(file, (void*)(buffer), BLOCKSIZE);
 		bytesWritten += write(fd, (void*)(buffer), bytesRead);
 
+		/*If we've written everything to the socket, break*/
 		if(bytesWritten == fileSize) {
 			break;
 		}
