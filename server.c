@@ -516,6 +516,10 @@ void sendFile(int fd, char* filename) {
 	unsigned char* buffer = NULL; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
 	int bytesRead = 0;  //Bytes read in that current iteration. 
+	FILE* socket = NULL;
+	
+	socket = fdopen(fd, "r+");
+	fflush(socket);
 
 
 	/*Allocate the write buffer*/
@@ -571,6 +575,12 @@ void getFile(int fd) {
 	int currentBytes = 0; 	
 	char fileName[BLOCKSIZE]; 
 	unsigned char *buffer = NULL;
+	int filenameSize = 0; 
+	FILE* socket = NULL;
+	
+	socket = fdopen(fd, "r+");
+	fflush(socket);
+
 
 	/*Allocate space for transfer buffer*/
 	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
@@ -592,9 +602,11 @@ void getFile(int fd) {
 		printf("File not found~!\n\n");
 		return;
 	}
-
-	/*Get the File name*/
-	read(fd, (void*)fileName, BLOCKSIZE);
+	
+	/*Read the filename */
+	
+	read(fd, &filenameSize, sizeof(int));
+	read(fd, (void*)fileName, filenameSize);
 	printf("File name recieved: %s\n", fileName); //Debug 
 
 	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
@@ -607,14 +619,16 @@ void getFile(int fd) {
 
 	printf("Transfering...\n"); fflush(stdout);
 	while(bytesWritten < fileSize) {
-	        		
+
 		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);							      
 		bytesWritten += write(newFile, (void*)buffer, currentBytes);	       
-		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);		
+
 
 		if(bytesWritten == fileSize) {
 			break;
 		}
+
+		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);		
 	}
 
 	printf("Transfer Complete! %d bytes written\n\n", bytesWritten); fflush(stdout); 

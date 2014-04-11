@@ -93,9 +93,9 @@ int main(void) {
 			free(command);
 			return 0;		
 		}
-
-		communicate(sock, command);
 			
+		communicate(sock, command);
+
 		if(strncasecmp(command, "get", FILECMDLEN) == 0) {			
 			getFile(sock); //read file from the socket		
 		} else if(strncasecmp(command, "put", FILECMDLEN) == 0) { 
@@ -266,7 +266,10 @@ void getFile(int fd) {
 	int currentBytes = 0; //Current # of bytes read from the socket. 
 	char fileName[BLOCKSIZE]; //Name of the file sent from the server. 
 	unsigned char *buffer; //buffer to hold blocks of data written to the socket from the server. 
-
+	FILE* socket = NULL;
+	
+	socket = fdopen(fd, "r+");
+	fflush(socket);
 
 	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
 	if(buffer == NULL) {
@@ -319,8 +322,14 @@ void sendFile(int fd, char* filename) {
 	unsigned char *buffer = NULL; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
 	int bytesRead = 0; //Bytes read from the file being sent.
+	int filenameSize = 0; 
+	FILE* socket = NULL;
+	
+	/*Flush the socket of all nasty bytes*/
+	socket = fdopen(fd, "r+");
+	fflush(socket);
+	
 
-       
 	/*Allocate space for write buffer*/
 	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
 	if(buffer == NULL) {
@@ -344,24 +353,28 @@ void sendFile(int fd, char* filename) {
 	lseek(file, 0, SEEK_SET);
 	
 	/*Write the file size to the socket */
-	write(fd, (void*)(&fileSize), sizeof(unsigned int));
-	
+	write(fd, (void*)&fileSize, sizeof(unsigned int));
+
 	/*Write the filename. This only works for files in the clien'ts current working dirctory*/
+	filenameSize = strlen(filename)+1;
+	write(fd, &filenameSize, sizeof(int)); 
 	write(fd, (void*)filename, (strlen(filename)+1));
-	
+
 	/*Write until the total number of bytes in the file being sent is written to the socket */
 	while(bytesWritten < fileSize) {
 
 		/*Read the data from the file and write it to the socket for the server to read.*/
 		bytesRead = read(file, (void*)buffer, BLOCKSIZE);
 		bytesWritten += write(fd, (void*)buffer, bytesRead);
-	       
+       
 		/*If we've written everything to the socket, break*/
 		if(bytesWritten == fileSize) {
 			break;
 		}
 
 		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);		
+
+		
 	}
 	
 	printf("Send complete~!\n\n"); fflush(stdout); 
