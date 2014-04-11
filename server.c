@@ -609,7 +609,7 @@ void getFile(int fd) {
 	while(bytesWritten < fileSize) {
 	        		
 		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);							      
-		bytesWritten += write(newFile, (void*)buffer, currentBytes);
+		bytesWritten += write(newFile, (void*)buffer, currentBytes);	       
 		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);		
 
 		if(bytesWritten == fileSize) {

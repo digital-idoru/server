@@ -318,9 +318,9 @@ void sendFile(int fd, char* filename) {
         unsigned int fileSize = 0; //Size of the file in bytes. 	
 	unsigned char *buffer = NULL; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
-	int bytesRead = 0; //Bytes read from the file being sent. 
-	
+	int bytesRead = 0; //Bytes read from the file being sent.
 
+       
 	/*Allocate space for write buffer*/
 	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
 	if(buffer == NULL) {
