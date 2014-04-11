@@ -23,6 +23,7 @@ then reads payload-size bytes from the socket.
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <sys/poll.h>
 
 #ifndef DEFINES
 #define DEFINES
@@ -225,7 +226,7 @@ void server(struct addrinfo *servinfo) {
 	int rBuff;				//size of the recieve buffer
 	int recSize;				//size of the recieved msg.
 	bool ack;				//acknowledge flag of HELO command
-
+	int yes = 1; 
 
 	/*Set up the recieved buffer */
 	char buffer[BUFSIZE]; 
@@ -249,6 +250,11 @@ void server(struct addrinfo *servinfo) {
 
 	/*Create the server socket */
 	socketFd = createSocket(servinfo);
+
+	if (setsockopt(socketFd, SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(int)) == -1) { 
+		perror("setsockopt"); 
+		exit(1); 
+	} 
 
 	/*Bind to the port */
 	myBind(servinfo, socketFd);
@@ -505,14 +511,23 @@ void resetWorkingDirectory(char* origin) {
 /*parameter filename: File to be opened by the server */
 void sendFile(int fd, char* filename) {
 
-	int file; //File descriptor for the file to open.
-	unsigned int fileSize; //Size of the file in bytes. 
-	unsigned char* buffer[BLOCKSIZE]; //Buffer for writting. 
+	int file = 0; //File descriptor for the file to open.
+	unsigned int fileSize = 0; //Size of the file in bytes. 
+	unsigned char* buffer = NULL; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
-	int bytesRead = 0; 
+	int bytesRead = 0;  //Bytes read in that current iteration. 
 
-	memset(buffer, 0, sizeof(char)*BLOCKSIZE);
 
+	/*Allocate the write buffer*/
+	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
+	if(buffer == NULL) {
+		printf("Could not allocate heap space.\n"); exit(EXIT_FAILURE); 
+	}	
+	
+	/*Clear out junk data*/
+	memset(buffer, 0, sizeof(unsigned char)*BLOCKSIZE);
+
+	/*Open the file to be sent in read-only mode*/
 	file = open(filename, O_RDONLY); 
 	if(file == -1) {
 		msgSend(fd, NOFILE, sizeof NOFILE);
@@ -532,14 +547,14 @@ void sendFile(int fd, char* filename) {
 	/*Write the file's bytes to the socket*/
 	while(bytesWritten < fileSize) {
 
-		bytesRead = read(file, (void*)(buffer), BLOCKSIZE);
-		bytesWritten += write(fd, (void*)(buffer), bytesRead);
+		bytesRead = read(file, (void*)buffer, BLOCKSIZE);
+		bytesWritten += write(fd, (void*)buffer, bytesRead);
 
 		if(bytesWritten == fileSize) {
 			break;
 		}
 
-		memset(buffer, 0, BLOCKSIZE);
+		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);
 	}
 	
 	close(file);
@@ -553,15 +568,24 @@ void getFile(int fd) {
 	unsigned int fileSize = 0;
 	int bytesWritten = 0; 
 	int newFile = 0; 
-	int currentBytes = 0; 
+	int currentBytes = 0; 	
 	char fileName[BLOCKSIZE]; 
-	unsigned char buffer[BLOCKSIZE];
+	unsigned char *buffer = NULL;
 
-	memset(fileName, 0, BLOCKSIZE);
-	memset(buffer, 0, BLOCKSIZE);
+	/*Allocate space for transfer buffer*/
+	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
+	if(buffer == NULL) {
+		printf("Could not allocate Heap space.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	/*Clear buffers of uneccessary data */
+	memset(fileName, 0, sizeof(char)*BLOCKSIZE);
+	memset(buffer, 0, sizeof(unsigned char)*BLOCKSIZE);
 
 	/*Get the file size */
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
+	printf("Filesize recieved: %d\n", fileSize); //Debug
 
 	 //Protocal. If filesize is 0, then the file could not be opened on the client end. 
 	if(fileSize == 0) {
@@ -571,27 +595,31 @@ void getFile(int fd) {
 
 	/*Get the File name*/
 	read(fd, (void*)fileName, BLOCKSIZE);
+	printf("File name recieved: %s\n", fileName); //Debug 
 
 	printf("Beginning file drop....\nTransfering file: %s\n204 Size of file (in Bytes): %d\n\n", fileName, fileSize);
 
-	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU);
+	newFile = open(fileName, O_WRONLY | O_CREAT, S_IRWXU); //Open a new file to write to. 
 	if(newFile < 0) {
-		printf("Could not open file!\n");
+		perror("Error opening file: "); 
 		return; 
 	}
 
-	printf("Transfering...");
+	printf("Transfering...\n"); fflush(stdout);
 	while(bytesWritten < fileSize) {
-		
-		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);
+	        		
+		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);							      
 		bytesWritten += write(newFile, (void*)buffer, currentBytes);
-		memset(buffer, 0, BLOCKSIZE);
+		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);		
 
-		if(bytesWritten == fileSize)
-			break;		
+		if(bytesWritten == fileSize) {
+			break;
+		}
 	}
 
-	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
+	printf("Transfer Complete! %d bytes written\n\n", bytesWritten); fflush(stdout); 
+
+	free(buffer); 
 	close(newFile);
 	return;
 }

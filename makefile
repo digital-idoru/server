@@ -1,9 +1,9 @@
-#Daniel S. Hono
+#Daniel S. Hono II 
 #CSI416 - Client/Serve Project II Makefile 
 
 #MACROS
 CC=gcc
-CFLAGS=  -pedantic -Wall -g
+CFLAGS = -Wall -g
 FILESS = server.o
 FILESC = client.o
 EXECS = server
@@ -17,7 +17,7 @@ CLEAN= *.o *.c~ core makefile~ *.md~
 	$(CC) $(CFLAGS) -c $< 
 
 #Default target
-all: server client clean
+all: server client
 
 #Server
 server: $(FILESS)

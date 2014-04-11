@@ -56,7 +56,6 @@ int main(void) {
 	char* command; //Send commands to the server
 	char welcomeMsg[WELCOMEMAX]; //Buffer to hold the welcome message. 
 
-
 	/*Allocate space for the command */
 	command = (char*)malloc(sizeof(char)*BLOCKSIZE);
 	if(command == NULL) {
@@ -64,7 +63,7 @@ int main(void) {
 	}
 
 	/* Make sure the buffers have no junk data */
-	memset(command, 0, BLOCKSIZE);
+	memset(command, '\0', sizeof(char)*BLOCKSIZE);
 
 	/*Set up the address info */
 	setAddressInfo(&res);	
@@ -95,22 +94,14 @@ int main(void) {
 			return 0;		
 		}
 
-		/*Send the message to the server */	
-		if(strncasecmp(command, "cd", DIRCMDLEN) == 0) {
-			//communicate(sock, cd); 
-			//tmp = setFileURL(command);
-			communicate(sock, command);
-			//free(tmp);
-			readLine(sock);
-		}else if(strncasecmp(command, "get", FILECMDLEN) == 0) {
-			communicate(sock, command);
+		communicate(sock, command);
+			
+		if(strncasecmp(command, "get", FILECMDLEN) == 0) {			
 			getFile(sock); //read file from the socket		
 		} else if(strncasecmp(command, "put", FILECMDLEN) == 0) { 
-			communicate(sock, command);
 			strtok(command, " \t");
-			sendFile(sock, strtok(NULL, "\n")); //send file to server. 				       
-		} else {
-			communicate(sock, command);
+			sendFile(sock, strtok(NULL, " \n")); //send file to server. 
+		} else {			
 			readLine(sock);
 		}
 	}
@@ -184,40 +175,6 @@ int connectToServer(int socketFileDescriptor, struct addrinfo *info) {
 	return socketFileDescriptor; //return the connected socket file descriptor. 
 }
 
-
-/*Function that takes a user-friendly standard file path and creates a file URL to send to the server */
-/*Parameters filepath: User friendly file path that needs to be converted to the file url scheme */
-char* setFileURL(char* filepath) {
-
-	char* filepathURI = NULL; //Pointer to the completed file url string. 
-	char* pathToken = NULL; //Pointer to the path token in the user's command. 
-
-	/*Get the path from the command */
-	strtok(filepath, " "); 
-	pathToken = strtok(NULL, "\n"); 
-	if(pathToken == NULL) {
-		printf("Invalid path");
-		return NULL;
-	}
-	printf("The path you entered hopefully is:%s\n", pathToken); //debug 
-	
-	/*Allocate space for a new complete file URL string */
-	filepathURI = (char*)malloc(sizeof(char)*(strlen(pathToken) + sizeof FILEURL + 2));
-	if(filepathURI == NULL) {
-		fprintf(stderr, "Could not allocate heap space, shutting down.\n"); exit(EXIT_FAILURE);
-	}
-
-	memset(filepathURI, 0, sizeof(char)*(strlen(pathToken) + sizeof FILEURL + 2));
-
-	/*Build the file url string up */
-	strncat(filepathURI, FILEURL, sizeof FILEURL);
-	strncat(filepathURI, pathToken, strlen(pathToken));
-	//strncat(filepathURI, ENDLINE, sizeof ENDLINE);  
-	printf("The complete file url is:%s", filepathURI); //debug
-
-	/*Return it*/ 
-	return filepathURI;
-}
 
 
 /*communicate with the server while the connection is up */
@@ -308,11 +265,17 @@ void getFile(int fd) {
 	int newFile = 0; //file descriptor for the newly created local file. 
 	int currentBytes = 0; //Current # of bytes read from the socket. 
 	char fileName[BLOCKSIZE]; //Name of the file sent from the server. 
-	unsigned char buffer[BLOCKSIZE]; //buffer to hold blocks of data written to the socket from the server. 
+	unsigned char *buffer; //buffer to hold blocks of data written to the socket from the server. 
+
+
+	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
+	if(buffer == NULL) {
+		printf("Could not allocate heap space.\n"); exit(EXIT_FAILURE);
+	}
 
 	/*Clear the buffers */
-	memset(fileName, 0, BLOCKSIZE);
-	memset(buffer, 0, BLOCKSIZE);
+	memset((void*)fileName, 0, BLOCKSIZE);
+	memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);
 
 	/*Get the file size */
 	read(fd, (void*)(&fileSize), sizeof(unsigned int));
@@ -334,10 +297,11 @@ void getFile(int fd) {
 		
 		currentBytes = read(fd, (void*)buffer, BLOCKSIZE);
 		bytesWritten += write(newFile, (void*)buffer, currentBytes);
-		memset(buffer, 0, BLOCKSIZE);
+		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);
 
-		if(bytesWritten == fileSize)
+		if(bytesWritten == fileSize) {
 			break;		
+		}
 	}
 
 	printf("Transfer Complete! %d bytes written\n\n", bytesWritten);
@@ -350,15 +314,22 @@ void getFile(int fd) {
 /*Parameters: filename, either a full user-friendly path to a file, or a file in the current directory*/
 void sendFile(int fd, char* filename) {
 
-	int file; //File descriptor for the file to open.
-	unsigned int fileSize = 0; //Size of the file in bytes. 
-	unsigned char* buffer[BLOCKSIZE]; //Buffer for writting. 
-	char* fileN; //Pointer to a tokenized filename if needed 
+	int file = 0; //File descriptor for the file to open.
+        unsigned int fileSize = 0; //Size of the file in bytes. 	
+	unsigned char *buffer = NULL; //Buffer for writting. 
 	int bytesWritten = 0; //Bytes written to the socket
 	int bytesRead = 0; //Bytes read from the file being sent. 
 	
+
+	/*Allocate space for write buffer*/
+	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
+	if(buffer == NULL) {
+		printf("Could not allocate heap space.\n");
+		exit(EXIT_FAILURE);
+	}
+
 	/*Clear the buffer */
-	memset(buffer, 0, sizeof(char)*BLOCKSIZE);
+	memset(buffer, 0, sizeof(unsigned char)*BLOCKSIZE);
 
 	/*Open file for reading. If it doesn't exist, send the failure protocal to the server*/
 	file = open(filename, O_RDONLY); 
@@ -374,31 +345,28 @@ void sendFile(int fd, char* filename) {
 	
 	/*Write the file size to the socket */
 	write(fd, (void*)(&fileSize), sizeof(unsigned int));
-
-	/*Write the filename to the socket */
-	if((fileN = strrchr(filename, '/')) != NULL) { //if it's a full user-friendly path to the file. 
-		fileN++;
-		write(fd, (void*)fileN, strlen(fileN)+1);
-	} else {
-		write(fd, (void*)filename, (strlen(filename)+1)); //if it's a file in the current directory. 
-	}
+	
+	/*Write the filename. This only works for files in the clien'ts current working dirctory*/
+	write(fd, (void*)filename, (strlen(filename)+1));
 	
 	/*Write until the total number of bytes in the file being sent is written to the socket */
 	while(bytesWritten < fileSize) {
 
 		/*Read the data from the file and write it to the socket for the server to read.*/
-		bytesRead = read(file, (void*)(buffer), BLOCKSIZE);
-		bytesWritten += write(fd, (void*)(buffer), bytesRead);
-
+		bytesRead = read(file, (void*)buffer, BLOCKSIZE);
+		bytesWritten += write(fd, (void*)buffer, bytesRead);
+	       
 		/*If we've written everything to the socket, break*/
 		if(bytesWritten == fileSize) {
 			break;
 		}
 
-		/*Clear the buffer of data after we don't need it anymore*/
-		memset(buffer, 0, BLOCKSIZE);
+		memset((void*)buffer, 0, sizeof(unsigned char)*BLOCKSIZE);		
 	}
 	
+	printf("Send complete~!\n\n"); fflush(stdout); 
+
+	free(buffer);
 	close(file);
 	return;
 }
