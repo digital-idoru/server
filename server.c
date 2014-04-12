@@ -72,7 +72,8 @@ char* stripFileURL(char*); //Remove file:// from the beginning of a directory pa
 
 
 /*Response messages to client commands. */
-char* welcome_msg = "\n\n~La Vie Est Drole~\n\n"; 
+//char* welcome_msg = "\n\n~La Vie Est Drole~\n\n"; 
+char* welcome_msg = "\n\n Connection Established\n\n";
 char* helo = "220 Connection Established.\n\n"; 
 char* goodbye = "100 Don't go away mad, just go away.\n\n";
 char* unrec = "401 Unrecognized Input.\n\n"; 

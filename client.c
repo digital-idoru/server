@@ -271,6 +271,7 @@ void getFile(int fd) {
 	socket = fdopen(fd, "r+");
 	fflush(socket);
 
+
 	buffer = (unsigned char*)malloc(sizeof(unsigned char)*BLOCKSIZE);
 	if(buffer == NULL) {
 		printf("Could not allocate heap space.\n"); exit(EXIT_FAILURE);
